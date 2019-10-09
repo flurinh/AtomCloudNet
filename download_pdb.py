@@ -1,10 +1,34 @@
 import requests
+from bs4 import BeautifulSoup
+import mechanicalsoup
+
 from tqdm import tqdm
 import time
+import os
+
+if not os.path.isdir('data'):
+    os.path.mkdir('data')
+
+# PATH = 'http://www.rcsb.org/pdb/resultsV2/sids.jsp?qrid=3C2A4361'
+PATH = 'http://www.rcsb.org/pdb/results/results.do?tabtoshow=Current&qrid=3C2A4361'
+#PATH = 'http://www.rcsb.org/pdb/resultsV2/sids.jsp?qrid=8FF875E0' # needs to be updated for ever use
 
 
+browser = mechanicalsoup.Browser()
+page = browser.get(PATH)
+dropdown = page.soup.find("form", {"class": "well well-sm"})
+dropdown_selection = dropdown.find_all("optgroup", {"label": "Custom Reports"})
+select = dropdown_selection[0].find("option")
 
-PATH = 'http://www.rcsb.org/pdb/resultsV2/sids.jsp?qrid=8FF875E0'
+print(dropdown_selection)
+print("select:", select)
+
+select["value"] = "selected"
+response = browser.submit(select, page.url)
+
+print(response.text)
+
+"""
 prefix = 'https://files.rcsb.org/download/'
 postfix = '_cs.str'
 postfix_pdb = '.pdb'
@@ -13,6 +37,8 @@ re = requests.get(PATH, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; WOW
 
 content = re.text
 list_ids = content.split('\n')
+print(list_ids)
+
 data = []
 save_path = 'data/'
 print("Checking "+str(len(list(list_ids)))+" proteins...")
@@ -34,3 +60,4 @@ for i, ID in enumerate(tqdm(list_ids)):
         file_pdb.write(content_pdb)
         time.sleep(5)
 print("Downloaded a total of "+str(n_prots)+" proteins!")
+"""
