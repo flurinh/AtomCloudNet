@@ -1,10 +1,12 @@
 import numpy as np
 from Bio.PDB import PDBParser
-from tqdm import tqdm
+from tqdm import tqdm, trange
+import csv
+import os
 
 PATH = 'data/'
 
-def load_pdb(path=PATH, name = '2L7B'):
+def load_pdb(name, path=PATH):
     p = PDBParser()
     structure = p.get_structure(name, path+name+"_pdb.txt")
     types = []
@@ -15,32 +17,29 @@ def load_pdb(path=PATH, name = '2L7B'):
             for atom in residue:
                 xyz.append(atom.get_coord())
                 types.append(atom.get_id())
-    return xyz, types
+    return xyz, types, res
 
-xyz, types = load_pdb()
+def make_dist_file(name, xyz, types):
+    for i in trange(0, len(xyz)):
+        hist = []
+        for j in range(0, len(xyz)):
+            if types[i] == 'N':
+                dist = np.linalg.norm(xyz[i]-xyz[j])
+                if dist < 6:
+                    hist.append([types[j], xyz[j].tolist()])
+                else:
+                    pass
+        filename = PATH+name+'/'+ name + '_' + str(i)
+        if not os.path.isdir(PATH+name):
+            os.mkdir(PATH+name)
+        if types[i] == 'N':
+            if len(hist) > 0:
+                with open(filename, 'w', newline='') as f:
+                    wr = csv.writer(f)
+                    wr.writerows(hist)
+
+
+example = '2L7B'
+xyz, types, res = load_pdb(name=example)
 xyz = np.asarray(xyz)
-
-'''
-print(xyz[0])
-dist = np.linalg.norm(xyz[0]-xyz[1])
-print(dist)
-'''
-
-def hist_r(xyz, types, radius = 5):
-    regions = []
-    for i, atom in enumerate(tqdm(xyz)):
-        region = []
-        for j in range(xyz.shape[0]):
-            if i==j:
-                pass
-            else:
-                dist = np.linalg.norm(atom)
-                if dist < radius:
-                    region.append([xyz[j], types[j]])
-        regions.append(region)
-    return regions
-
-regions = hist_r(xyz, types)
-print(len(regions))
-for l in regions:
-    print(len(l))
+make_dist_file(example, xyz, types)
