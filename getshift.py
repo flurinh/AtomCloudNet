@@ -28,7 +28,8 @@ def get_shift(name, path=PATH):
                 number.append(int(tokens[17]))
                 residue.append(tokens[5])
     for i in range(len(numberN)):
-        print(name + '_' + str(number[i]) + '_' + str(residue[i]) + '.xyz', n_shift[i], h_shift[i])
+        num = ["%.3d" % x for x in number]
+        print(name + '_' + str(num[i]) + '_' + str(residue[i]) + '.xyz', n_shift[i], h_shift[i])
     return n_shift, h_shift, numberH, numberN
 
 example = '2L7B'
