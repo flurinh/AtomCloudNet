@@ -16,7 +16,7 @@ def load_pdb(name, path=PATH):
     counter = 1
     for chain in model:
         for residue in chain:
-            res.append([residue.get_resname(), counter])
+            res.append([residue.get_resname(), "%03d" % counter])
             for atom in residue:
                 xyz.append(atom.get_coord())
                 types.append(atom.get_id())
@@ -43,7 +43,6 @@ def make_dist_file(name, xyz, types, res_list):
         with open(filename, 'w', newline='') as f:
             wr = csv.writer(f)
             wr.writerows(hist)
-
 
 example = '2L7B'
 xyz, types, res = load_pdb(name=example)
