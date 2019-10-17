@@ -24,16 +24,16 @@ def load_pdb(name, path=PATH):
 
     return xyz, types, res
 
+
 def make_dist_file(name, xyz, types, res_list):
     hist_list = []
     for i in trange(0, len(xyz)):
         hist = []
         if types[i] == 'N':
             for j in range(0, len(xyz)):
-                if i >= 1:
-                    dist = np.linalg.norm(xyz[i]-xyz[j])
-                    if dist < 6:
-                        hist.append([types[j], xyz[j].tolist()])
+                dist = np.linalg.norm(xyz[i]-xyz[j])
+                if dist < 6:
+                    hist.append([types[j], xyz[j].tolist()])
                 else:
                     pass
         if len(hist) > 0:
@@ -44,8 +44,35 @@ def make_dist_file(name, xyz, types, res_list):
             wr = csv.writer(f)
             wr.writerows(hist)
 
-example = '2L7B'
-xyz, types, res = load_pdb(name=example)
-xyz = np.asarray(xyz)
-res = np.asarray(res)
-make_dist_file(example, xyz, types, res)
+
+def get_shift(name, path=PATH):
+
+    file = open(path + name + ".txt")
+    stringList = file.readlines()
+    file.close()
+
+    n_shift = []
+    h_shift = []
+    numberN = []
+    numberH = []
+    number = []
+    residue = []
+
+    for line in stringList:
+        tokens = line.split()
+        if len(tokens) >= 27:
+            if 'N    ' in line:
+                n_shift.append(float(tokens[9]))
+                numberN.append(float(tokens[0]))
+            if 'H    ' in line:
+                h_shift.append(float(tokens[9]))
+                numberH.append(float(tokens[0]))
+                number.append(int(tokens[17]))
+                residue.append(tokens[5])
+
+    fname = PATH + "shift/" + name + '.txt'
+    with open(fname, 'w') as outfile:
+        for i in range(len(numberN)):
+            num = ["%.3d" % x for x in number]
+            print(name + '_' + str(num[i]) + '_' + str(residue[i]) + '.xyz', n_shift[i], h_shift[i], file=outfile)
+    return n_shift, h_shift, numberH, numberN
