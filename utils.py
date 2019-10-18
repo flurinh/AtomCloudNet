@@ -2,9 +2,17 @@ import numpy as np
 from Bio.PDB import PDBParser
 from tqdm import tqdm, trange
 import csv
-import os
+import shutil
 
 PATH = 'data/'
+
+
+"""
+
+Load Pdb and get for each atom xyz-coordinates, Atom type (CA, H, N, NZ etc.) and Residue type (ALA, PRO etc.)
+
+"""
+
 
 def load_pdb(name, path=PATH):
     p = PDBParser()
@@ -25,6 +33,16 @@ def load_pdb(name, path=PATH):
     return xyz, types, res
 
 
+"""
+
+Make Histogram for each amino acid.
+
+Center: N
+
+Radius: dist = 6
+
+"""
+
 def make_dist_file(name, xyz, types, res_list):
     hist_list = []
     for i in trange(0, len(xyz)):
@@ -44,6 +62,14 @@ def make_dist_file(name, xyz, types, res_list):
             wr = csv.writer(f)
             wr.writerows(hist)
 
+
+"""
+
+Create file txt file with filename and chemical shift:
+
+*.xyz   H-Shift
+
+"""
 
 def get_shift(name, path=PATH):
 
@@ -76,3 +102,31 @@ def get_shift(name, path=PATH):
             num = ["%.3d" % x for x in number]
             print(name + '_' + str(num[i]) + '_' + str(residue[i]) + '.xyz', n_shift[i], h_shift[i], file=outfile)
     return n_shift, h_shift, numberH, numberN
+
+
+"""
+
+Move all xyz files without NMR shift into a different folder called noshift/ . 
+
+"""
+
+PATH2 = "shift/"
+destination = "noshift/"
+
+def mv_Res_without_Shift(name, path=PATH2):
+
+    file = open(path + name + ".txt")
+    stringList = file.readlines()
+    file.close()
+
+    fname = []
+
+    for line in stringList:
+        tokens = line.split()
+        fname.append(tokens[0])
+
+    xyzs = glob.glob('*.xyz')
+
+    for i in xyzs:
+        if i in xyzs and i not in fname:
+            shutil.move(i, destination)
