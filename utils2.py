@@ -65,6 +65,21 @@ def make_dist_file(name, xyz, types, res_list):
 
 """
 
+clean xyz files with coordinates
+
+"""
+def clean_XYZ()
+    filenames = glob.glob('*txt')
+    for filename in filenames:
+        with open(filename) as infile, open(filename + '.txt', 'w') as outfile:
+            temp = infile.read().replace("[", "  ").replace("]", "  ").replace("HA ", "H ").replace("HA3 ", "H ").replace("NZ ", "N ").replace("HB ", "H ").replace("HG ", "H ").replace("HB1 ", "H ").replace("HB2 ", "H ").replace("HB3 ", "H ").replace("HG11 ", "H ").replace("HG12 ", "H ").replace("HG13 ", "H ").replace("HG21 ", "H ").replace("HG22 ", "H ").replace("HG23 ", "H ").replace("HG3 ", "H ").replace("HG2 ", "H ").replace("HG1 ", "H ").replace("HE ", "H ").replace("HE11 ", "H ").replace("HE12 ", "H ").replace("HE13 ", "H ").replace("HE21 ", "H ").replace("HE22 ", "H ").replace("HE23 ", "H ").replace("HE3 ", "H ").replace("HE2 ", "H ").replace("HE1 ", "H ").replace("HZ1 ", "H ").replace("HZ2 ", "H ").replace("HZ3 ", "H ").replace("HH ", "H ").replace("HH11 ", "H ").replace("HH12 ", "H ").replace("HH13 ", "H ").replace("HH21 ", "H ").replace("HH22 ", "H ").replace("HH23 ", "H ").replace("CA ", "C ").replace("CB ", "C ").replace("CG ", "C ").replace("CG1 ", "C ").replace("CG2 ", "C ").replace("CE ", "C ").replace("CE1 ", "C ").replace("CE2 ", "C ").replace("CZ ", "C ").replace("CZ2 ", "C ").replace("CZ3 ", "C ").replace("CH ", "C ").replace("CH2 ", "C ").replace("NH1 ", "N").replace("NH2 ", "N ").replace("NE1 ", "N ").replace("NE2 ", "N ").replace("NE ", "N ").replace("SG ", "S ").replace("OG ", "O ").replace("OG1 ", "O ").replace("OE1 ", "O ").replace("OE2 ", "O ").replace("OH ", "O ").replace("HD11 ", "H ").replace("HD12 ", "H ").replace("HD13 ", "H ").replace("HD21 ", "H ").replace("HD22 ", "H ").replace("HD23 ", "H ").replace("HD3 ", "H ").replace("HD2 ", "H").replace("HG1 ", "H ").replace("HD1 ", "H ").replace("OD1 ", "O ").replace("OD2 ", "O ").replace("CD ", "C ").replace("SD ", "S ").replace("CD1 ", "C ").replace("CD2 ", "C ").replace("CE3 ", "C ").replace("\"", " ").replace(",", " ").replace("HA1 ", "H ").replace("HA2 ", "H ").replace("CD1 ", "C ").replace("CD1 ", "C ").replace("ND1 ", "N ").replace("ND2 ", "N ").replace("NZ ", "N ")
+            print(temp, file=outfile)
+
+
+
+
+"""
+
 Create file txt file with filename and chemical shift:
 
 *.xyz   H-Shift
@@ -131,3 +146,71 @@ def mv_Res_without_Shift(name, path=PATH2):
         if i in xyzs and i not in fname:
             shutil.move(i, destination)
 
+
+"""
+
+Shape your XYZ 
+
+
+Get all xyzs in one foleder and txtfile with all shifts and then execute the two functions to get proper xyz file 
+
+"""
+
+PATH = '../xyzcopy/'
+
+def addlineto_xyz(name, path=PATH):
+
+    file = open(path + name + ".txt")
+    stringList = file.readlines()
+    file.close()
+
+    fname = []
+    lines = []
+
+    for line in stringList:
+        lines.append(line)
+        tokens = line.split()
+        fname.append(tokens[0])
+
+    xyzs = glob.glob('*.xyz')
+
+
+    with open(path + name + ".txt") as openfile:
+        for line in openfile:
+            for part in line.split():
+                for j in xyzs:
+                    if j in part:
+                        filey = open(j)
+                        stringListy = filey.readlines()
+                        with open(j + ".txt", "w") as outfile:
+                            print(len(stringListy), file=outfile)
+                            print(line, file=outfile)
+                            for liney in stringListy:
+                                print(liney, file=outfile)
+
+
+
+def strip_txt_file():
+    filenames = glob.glob('*.xyz.txt')
+    for filename in filenames:
+        with open(filename) as infile, open(filename + '.txt', 'w') as outfile:
+            for line in infile:
+                if not line.strip(): continue
+                outfile.write(line)
+
+
+
+#addlineto_xyz(name='2L7B')
+strip_txt_file()
+
+
+"""
+
+rm *.xyz
+
+
+for file in *.xyz.txt.txt; do mv "$file" "${file/.xyz.txt.txt/.xyz}"; done
+
+rm *.txt
+
+"""
