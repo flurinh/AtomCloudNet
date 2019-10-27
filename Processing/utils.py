@@ -5,6 +5,7 @@ import csv
 import shutil
 
 import glob
+import os
 
 PATH = 'data/'
 
@@ -32,24 +33,20 @@ def load_pdb(name, path=PATH):
 
 
 """
-
 Make Histogram for each amino acid.
-
 Center: N
-
 Radius: dist = 6
-
 """
 
 
-def make_dist_file(name, xyz, types, res_list):
+def make_dist_file(name, xyz, types, res_list, radius):
     hist_list = []
     for i in trange(0, len(xyz)):
         hist = []
         if types[i] == 'N':
             for j in range(0, len(xyz)):
                 dist = np.linalg.norm(xyz[i] - xyz[j])
-                if dist < 6:
+                if dist < radius:
                     hist.append([types[j], xyz[j].tolist()])
                 else:
                     pass
@@ -197,29 +194,26 @@ def addlineto_xyz(name, path=PATH):
     file = open(path+'shift/'+name+'.txt')
     stringList = file.readlines()
     file.close()
-
     fname = []
     lines = []
-
     for line in stringList:
         lines.append(line)
         tokens = line.split()
         fname.append(tokens[0])
-
-    xyzs = glob.glob('*.xyz')
-
-    with open(path+'shift/'+name+'.txt') as openfile:
+    xyzs = glob.glob(path + 'hist/*.xyz')
+    with open(path +'shift/'+name+'.txt') as openfile:
         for line in openfile:
             for part in line.split():
                 for j in xyzs:
-                    if j in part:
+                    if j in path+'hist/'+part:
                         filey = open(j)
                         stringListy = filey.readlines()
-                        with open(j + ".txt", "w") as outfile:
-                            print(len(stringListy), file=outfile)
-                            print(line, file=outfile)
-                            for liney in stringListy:
-                                print(liney, file=outfile)
+                        stringListy = [l.strip('\n').strip(' ') for l in stringListy]
+                        with open(j, "w") as outfile:
+                            outfile.write(str(len(stringListy))+('\n'))
+                            outfile.write(line)
+                            outfile.writelines("%s\n" % line for line in stringListy)
+                        outfile.close()
 
 
 def strip_txt_file():
