@@ -1,24 +1,43 @@
 import numpy as np
 from Bio.PDB import PDBParser
 from tqdm import tqdm, trange
+import time
 import csv
 import shutil
+
+from collections import namedtuple
 
 import glob
 import os
 
 PATH = 'data/'
 
-"""
 
-Load Pdb and get for each atom xyz-coordinates, Atom type (CA, H, N, NZ etc.) and Residue type (ALA, PRO etc.)
+def load_xyz(filepath):
+    with open(filepath, 'r') as fin:
+        try:
+            natoms = int(fin.readline())
+            title = fin.readline()[:-1]
+            coords = np.zeros([natoms, 3], dtype="float64")
+            atomtypes = []
+            for x in coords:
+                line = fin.readline().split()
+                atomtypes.append(line[0])
+                x[:] = list(map(float, line[1:4]))
 
-"""
+            return namedtuple("XYZFile", ["coords", "title", "atomtypes"]) \
+                (coords, title, atomtypes)
+        except:
+            return namedtuple("XYZFile", ["coords", "title", "atomtypes"]) \
+                (None, None, None)
 
 
 def load_pdb(name, path=PATH):
+    """
+    Load Pdb and get for each atom xyz-coordinates, Atom type (CA, H, N, NZ etc.) and Residue type (ALA, PRO etc.)
+    """
     p = PDBParser()
-    structure = p.get_structure(name, path + name + "_pdb.txt")
+    structure = p.get_structure(name, path + name + ".pdb")
     types = []
     xyz = []
     res = []
@@ -32,14 +51,12 @@ def load_pdb(name, path=PATH):
     return xyz, types, res
 
 
-"""
-Make Histogram for each amino acid.
-Center: N
-Radius: dist = 6
-"""
-
-
 def make_dist_file(name, xyz, types, res_list, radius):
+    """
+    Make Histogram for each amino acid.
+    Center: N
+    Radius: dist = 6
+    """
     hist_list = []
     for i in trange(0, len(xyz)):
         hist = []
@@ -59,20 +76,16 @@ def make_dist_file(name, xyz, types, res_list, radius):
             wr.writerows(hist)
 
 
-"""
-
-clean xyz files with coordinates
-
-"""
-
-
 def clean_XYZ():
-    filenames = glob.glob(PATH+'hist/*.txt')
+    """
+    clean xyz files with coordinates
+    """
+    filenames = glob.glob(PATH + 'hist/*.txt')
     for filename in tqdm(filenames):
-        with open(filename) as infile, open(filename + '.txt', 'w') as outfile:
-            temp = infile.read().replace("[", "  ").replace("]", "  ").replace("HA ", "H ").replace("HA3 ",
-                                                                                                    "H ").replace("NZ ",
-                                                                                                                  "N ").replace(
+        with open(filename, 'r') as file:
+            temp = file.read().replace("[", "  ").replace("]", "  ").replace("HA ", "H ").replace("HA3 ",
+                                                                                                  "H ").replace("NZ ",
+                                                                                                                "N ").replace(
                 "HB ", "H ").replace("HG ", "H ").replace("HB1 ", "H ").replace("HB2 ", "H ").replace("HB3 ",
                                                                                                       "H ").replace(
                 "HG11 ", "H ").replace("HG12 ", "H ").replace("HG13 ", "H ").replace("HG21 ", "H ").replace("HG22 ",
@@ -109,89 +122,100 @@ def clean_XYZ():
                 "H1  ", "H  ").replace("H2  ", "H  ").replace("H3  ", "H  ").replace("HH2  ", "H  ").replace("OXT  ",
                                                                                                              "O  ").replace(
                 "ZN  ", "N  ")
-            print(temp, file=outfile)
+            file.close()
+        with open(filename, 'w') as file:
+            file.write(temp)
+            file.close()
 
 
-"""
-
-Create file txt file with filename and chemical shift:
-
-*.xyz   H-Shift
-
-"""
-
+def make_xyz_from_txt(filename):
+    with open(filename, 'r') as file:
+        temp = file.read()
+        file.close()
+    with open(filename[:-4]+'.xyz', 'w') as file:
+        file.write(temp)
+        file.close()
+    os.remove(filename)
 
 def get_shift(name, path=PATH):
-    file = open(path + name + ".txt")
-    stringList = file.readlines()
-    file.close()
+    """
+    Create file txt file with filename and chemical shift:
+    *.xyz   H-Shift
+    """
+    with open(path + name + ".txt", 'r') as file:
+        stringList = file.readlines()
+        file.close()
 
     n_shift = []
+    n_res = []
+    n_res_num = []
     h_shift = []
-    numberN = []
-    numberH = []
-    number = []
-    residue = []
+    h_res = []
+    h_res_num = []
 
     for line in stringList:
         tokens = line.split()
+        invalid = False
         if len(tokens) >= 27:
             if 'N    ' in line:
-                n_shift.append(float(tokens[9]))
-                numberN.append(float(tokens[0]))
+                try:
+                    res_num = int(tokens[17])
+                    n_res_num.append(res_num)
+                    n_shift.append(float(tokens[9]))
+                    n_res.append(tokens[5])
+                except:
+                    pass
             if 'H    ' in line:
-                h_shift.append(float(tokens[9]))
-                numberH.append(float(tokens[0]))
-                number.append(int(tokens[17]))
-                residue.append(tokens[5])
-
+                try:
+                    res_num = int(tokens[17])
+                    h_res_num.append(res_num)
+                    h_shift.append(float(tokens[9]))
+                    h_res.append(tokens[5])
+                except:
+                    pass
+    valid_residues = list(set(n_res_num).intersection(h_res_num))
     fname = path + "shift/" + name + '.txt'
     with open(fname, 'w') as outfile:
-        for i in range(len(numberN)):
-            num = ["%.3d" % x for x in number]
-            print(name + '_' + str(num[i]) + '_' + str(residue[i]) + '.xyz', n_shift[i], h_shift[i], file=outfile)
-    return n_shift, h_shift, numberH, numberN
+        for i in range(len(valid_residues)):
+            num = ["%.3d" % x for x in valid_residues]
+            n_ = n_shift[i]
+            h_ = h_shift[i]
+            outfile.write((name + '_' + str(num[i]) + '_' + str(n_res[i]) + '.xyz ' + str(n_) + ' '+ str(h_)+'\n'))
+        outfile.close()
+    return n_shift, h_shift
 
 
-"""
-
-Move all xyz files without NMR shift into a different folder called noshift/ . 
-
-"""
 
 
 def mv_Res_without_Shift(path=PATH):
+    """
+    Move all xyz files without NMR shift into a different folder called noshift/ .
+    """
     files = glob.glob('data/shift/*.txt')
     fname = []
-    for file in files:
+    print("Finding residues without shift.")
+    for file in tqdm(files):
         f = open(file)
         stringList = f.readlines()
         f.close()
         for line in stringList:
             tokens = line.split()
-            fname.append('data/hist/'+tokens[0])
-
-    xyzs = glob.glob(path+'hist/*.xyz')
-
-
-    for i in xyzs:
+            fname.append('data/hist/' + tokens[0])
+    
+    print("Moving files with residues without shift.")
+    xyzs = glob.glob(path + 'hist/*.xyz')
+    for i in tqdm(xyzs):
         if i not in fname:
-            # print(i)
-            shutil.move(i, 'data/hist_noshift')
-
-
-"""
-
-Shape your XYZ 
-
-
-Get all xyzs in one foleder and txtfile with all shifts and then execute the two functions to get proper xyz file 
-
-"""
+            os.remove(i)
+            # shutil.move(i, 'data/hist_noshift')
 
 
 def addlineto_xyz(name, path=PATH):
-    file = open(path+'shift/'+name+'.txt')
+    """
+    Shape your XYZ
+    Get all xyzs in one foleder and txtfile with all shifts and then execute the two functions to get proper xyz file
+    """
+    file = open(path + 'shift/' + name + '.txt')
     stringList = file.readlines()
     file.close()
     fname = []
@@ -201,41 +225,19 @@ def addlineto_xyz(name, path=PATH):
         tokens = line.split()
         fname.append(tokens[0])
     xyzs = glob.glob(path + 'hist/*.xyz')
-    with open(path +'shift/'+name+'.txt') as openfile:
+    with open(path + 'shift/' + name + '.txt') as openfile:
         for line in openfile:
             for part in line.split():
                 for j in xyzs:
-                    if j in path+'hist/'+part:
+                    if j in path + 'hist/' + part:
                         filey = open(j)
                         stringListy = filey.readlines()
+                        filey.close()
                         stringListy = [l.strip('\n').strip(' ') for l in stringListy]
                         with open(j, "w") as outfile:
-                            outfile.write(str(len(stringListy))+('\n'))
+                            outfile.write(str(len(stringListy)) + ('\n'))
                             outfile.write(line)
                             outfile.writelines("%s\n" % line for line in stringListy)
                         outfile.close()
-
-
-def strip_txt_file():
-    filenames = glob.glob('*.xyz.txt')
-    for filename in filenames:
-        with open(filename) as infile, open(filename + '.txt', 'w') as outfile:
-            for line in infile:
-                if not line.strip():
-                    continue
-                outfile.write(line)
-
-
-# addlineto_xyz(name='2L7B')
-
-
-"""
-
-rm *.xyz
-
-
-for file in *.xyz.txt.txt; do mv "$file" "${file/.xyz.txt.txt/.xyz}"; done
-
-rm *.txt
-
-"""
+    openfile.close()
+    return
