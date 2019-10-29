@@ -1,4 +1,4 @@
-# from Processing.download_pdb import *
+from Processing.download_pdb import *
 from Processing.utils import *
 from Processing.loader import *
 
@@ -14,13 +14,14 @@ PATH = 'data/'
 class Protos:
     def __init__(self,
                  radius,
-                 download = False,
+                 download = True,
                  preprocess = True,
                  analysis = False,
                  mode = 'coulomb'):
         self.radius = radius
 
         if download:
+            download_proteins()
             pass
 
         limit = np.inf
