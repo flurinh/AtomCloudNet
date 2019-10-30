@@ -1,10 +1,10 @@
 import numpy as np
-from Bio.PDB import PDBParser
 from tqdm import tqdm, trange
-import csv
-from collections import namedtuple
 import glob
 import os
+import csv
+from collections import namedtuple
+from Bio.PDB import PDBParser
 
 PATH = 'data/'
 

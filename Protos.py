@@ -11,7 +11,7 @@ PATH = 'data/'
 
 
 def check_hist(name):
-    hist_files = glob.glob(PATH+'hist/*')
+    hist_files = glob.glob(PATH + 'hist/*')
     for h in hist_files:
         if name in h:
             return True
@@ -58,7 +58,7 @@ class Protos:
                     if check_hist(i):
                         pass
                     else:
-                        xyz, types, res = load_pdb(path=PATH+'raw/', name=i)
+                        xyz, types, res = load_pdb(path=PATH + 'raw/', name=i)
                         xyz = np.asarray(xyz)
                         res = np.asarray(res)
                         make_dist_file(i, xyz, types, res, radius=radius)
@@ -67,24 +67,24 @@ class Protos:
             clean_XYZ()
             clean_XYZ()
 
-            hist_files = glob.glob(PATH+'hist/*.txt')
+            hist_files = glob.glob(PATH + 'hist/*.txt')
             print("Casting to xyz format...")
             for hist_file in tqdm(hist_files):
-                if os.path.isfile(hist_file[:-4]+'.xyz'):
+                if os.path.isfile(hist_file[:-4] + '.xyz'):
                     pass
                 else:
-                    new_src = hist_file[:-4]+'.xyz'
+                    new_src = hist_file[:-4] + '.xyz'
                     os.rename(hist_file, new_src)
 
-            if not os.path.isdir(PATH+'shift'):
-                os.mkdir(PATH+'shift')
+            if not os.path.isdir(PATH + 'shift'):
+                os.mkdir(PATH + 'shift')
 
             print("Getting shifts...")
             for i in tqdm(id_list):
-                if os.path.isfile(PATH+'shifts/'+i+'.txt'):
+                if os.path.isfile(PATH + 'shifts/' + i + '.txt'):
                     pass
                 else:
-                    get_shift(path=PATH+'raw/', name=i)
+                    get_shift(path=PATH + 'raw/', name=i)
 
             mv_Res_without_Shift()
 
@@ -93,13 +93,12 @@ class Protos:
                 addlineto_xyz(i)
 
         if analysis:
-            xyz = xyz_loader(limit = limit)
-
+            xyz = xyz_loader(limit=limit)
             batch_loader = DataLoader(xyz, batch_size=256, shuffle=True)
             start = time.time()
             for idx, batch in enumerate(tqdm(batch_loader)):
                 print(batch[0].shape)
-            print("{} samples took {} minutes.".format(limit, time.time()-start))
+            print("{} samples took {} minutes.".format(limit, time.time() - start))
 
 
 if __name__ == '__main__':
