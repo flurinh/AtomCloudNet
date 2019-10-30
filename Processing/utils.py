@@ -76,7 +76,7 @@ def clean_XYZ():
     """
     clean xyz files with coordinates
     """
-    filenames = glob.glob(PATH + 'hist/*.txt')
+    filenames = glob.glob('*.xyz')
     for filename in tqdm(filenames):
         with open(filename, 'r') as file:
             temp = file.read().replace("[", "  ").replace("]", "  ").replace("HA ", "H ").replace("HA3 ",
@@ -117,7 +117,13 @@ def clean_XYZ():
                                                                                                        "H  ").replace(
                 "H1  ", "H  ").replace("H2  ", "H  ").replace("H3  ", "H  ").replace("HH2  ", "H  ").replace("OXT  ",
                                                                                                              "O  ").replace(
-                "ZN  ", "N  ")
+                "ZN  ", "N  ").replace("NH ", "N").replace("C1 ", "C").replace("O1 ", "O").replace("H21 ", "H").replace("H22 ", "H ").replace("H23 ",
+                                                                                                                                              "H ").replace(
+                "H41 ", "H").replace("H42 ", "H ").replace("H43 ", "H ").replace("C2 ", "C").replace("C3 ", "C").replace("C4 ",
+                                                                                                                         "C").replace(
+                "H31 ", "H").replace("H32 ", "H ").replace("H33 ", "H ").replace("H51 ", "H").replace("H52 ", "H ").replace("H53 ",
+                                                                                                                            "H ").replace(
+                "C14 ", "C").replace("H141 ", "H").replace("H142 ", "H ").replace("H143 ", "H ")
             file.close()
         with open(filename, 'w') as file:
             file.write(temp)
