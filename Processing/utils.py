@@ -1,12 +1,8 @@
 import numpy as np
 from Bio.PDB import PDBParser
 from tqdm import tqdm, trange
-import time
 import csv
-import shutil
-
 from collections import namedtuple
-
 import glob
 import os
 
@@ -128,15 +124,6 @@ def clean_XYZ():
             file.close()
 
 
-def make_xyz_from_txt(filename):
-    with open(filename, 'r') as file:
-        temp = file.read()
-        file.close()
-    with open(filename[:-4]+'.xyz', 'w') as file:
-        file.write(temp)
-        file.close()
-    os.remove(filename)
-
 def get_shift(name, path=PATH):
     """
     Create file txt file with filename and chemical shift:
@@ -174,17 +161,15 @@ def get_shift(name, path=PATH):
                 except:
                     pass
     valid_residues = list(set(n_res_num).intersection(h_res_num))
-    fname = path + "shift/" + name + '.txt'
+    fname = PATH + "shift/" + name + '.txt'
     with open(fname, 'w') as outfile:
         for i in range(len(valid_residues)):
             num = ["%.3d" % x for x in valid_residues]
             n_ = n_shift[i]
             h_ = h_shift[i]
-            outfile.write((name + '_' + str(num[i]) + '_' + str(n_res[i]) + '.xyz ' + str(n_) + ' '+ str(h_)+'\n'))
+            outfile.write((name + '_' + str(num[i]) + '_' + str(n_res[i]) + '.xyz ' + str(n_) + ' ' + str(h_) + '\n'))
         outfile.close()
     return n_shift, h_shift
-
-
 
 
 def mv_Res_without_Shift(path=PATH):
@@ -201,7 +186,7 @@ def mv_Res_without_Shift(path=PATH):
         for line in stringList:
             tokens = line.split()
             fname.append('data/hist/' + tokens[0])
-    
+
     print("Moving files with residues without shift.")
     xyzs = glob.glob(path + 'hist/*.xyz')
     for i in tqdm(xyzs):
