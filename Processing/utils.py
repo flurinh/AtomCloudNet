@@ -200,7 +200,30 @@ def mv_Res_without_Shift(path=PATH):
             os.remove(i)
             # shutil.move(i, 'data/hist_noshift')
 
+def get_pH():
+    #fnames = glob.glob("*_pdb.txt") #get all pdbs
+    for fname in fnames:
+        f = open(fname)
+        stringlist = f.readlines()
+        f.close()
+        for line in stringlist:
+            if "PH " in line:
+                a = line.split()
+                b = a[-1]
+                #print("pH:", b)
 
+        for line in stringlist:
+            if "(KELVIN)" in line:
+                c = line.split()
+                d = c[-1]
+                #print("Kelvin:", d)
+
+        for line in stringlist:
+            if "IONIC STRENGTH " in line:
+                e = line.split()
+                f = e[-1]
+                #print("Ionic strenght:", f)
+         
 def addlineto_xyz(name, path=PATH):
     """
     Shape your XYZ
