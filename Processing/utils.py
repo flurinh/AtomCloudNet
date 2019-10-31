@@ -72,6 +72,14 @@ def make_dist_file(name, xyz, types, res_list, radius):
             wr.writerows(hist)
 
 
+def get_shiftfile():
+    fnames = glob.glob("*.xyz")
+    for f in fnames:
+        f = open(f)
+        stringlist = f.readlines()[1].split()
+        f.close()
+        print(stringlist[0], stringlist[2])
+
 def clean_XYZ():
     """
     clean xyz files with coordinates
@@ -123,11 +131,34 @@ def clean_XYZ():
                                                                                                                          "C").replace(
                 "H31 ", "H").replace("H32 ", "H ").replace("H33 ", "H ").replace("H51 ", "H").replace("H52 ", "H ").replace("H53 ",
                                                                                                                             "H ").replace(
-                "C14 ", "C").replace("H141 ", "H").replace("H142 ", "H ").replace("H143 ", "H ")
+                "C14 ", "C").replace("H141 ", "H").replace("H142 ", "H ").replace("H143 ", "H ").replace("HBA ", "H ").replace("CX2 ", "C ").replace("CX3 ",
+                                                                                                                                                     "C ").replace(
+                "CX1 ", "C ").replace("O2 ", "O").replace("H1A ", "H ").replace("H1B ", "H ").replace("H1C ", "H ").replace("H1 ", "H ").replace("H2 ", "H ").replace("H3 ", "H ").replace("H4 ", "H ").replace("H5 ", "H ").replace("H6 ", "H ").replace("H7 ", "H ").replace("H8 ", "H ").replace("H9 ", "H ").replace(
+                "H10 ", "H ").replace("C1 ", "C ").replace("C2 ", "C ").replace("C3 ", "C ").replace("C4 ", "C ").replace("C5 ", "C ").replace("C6 ", "C ").replace("C7 ", "C ").replace("C8 ", "C ").replace("C9 ", "C ").replace(
+                "C10 ", "C ").replace("N1 ", "N ").replace("N2 ", "N ").replace("N3 ", "N ").replace("N4 ", "N ").replace("N5 ", "N ").replace("N6 ", "N ").replace("N7 ", "N ").replace("N8 ", "N ").replace("N9 ", "N ").replace(
+                "N10 ", "N ").replace("O1 ", "O ").replace("O2 ", "O ").replace("O3 ", "O ").replace("O4 ", "O ").replace("O5 ", "O ").replace("O6 ", "O ").replace("O7 ", "O ").replace("O8 ", "O ").replace("O9 ", "O ").replace(
+                "O10 ", "O ")
             file.close()
         with open(filename, 'w') as file:
             file.write(temp)
             file.close()
+
+def get_all_stupid_atoms():
+    fnames = glob.glob("*.xyz")
+    for f in tqdm(fnames):
+        i = open(f)
+        stringlist = i.readlines()
+        i.close()
+
+        for line in stringlist:
+            tokens = line.split()
+            if len(tokens) >= 4:
+                if (tokens[0] != "H" and tokens[0] != "O" and tokens[0] != "N" and tokens[0] != "C" and tokens[0] != "S"):
+                    #print(f)
+                    try:
+                        os.remove(f)
+                    except:
+                        pass
 
 
 def get_shift(name, path=PATH):
