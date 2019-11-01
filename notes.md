@@ -31,6 +31,12 @@ module load gcc/6.3.0
 
 
 https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html --> go through the steps
+export PATH=/usr/local/cuda/bin:$PATH
+echo $PATH
+export CPATH=/usr/local/cuda/include:$CPATH
+echo $CPATH
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+echo $LD_LIBRARY_PATH
 
 
 Ideas: 
@@ -38,3 +44,12 @@ Ideas:
 Voxel network:      https://pytorch-geometric.readthedocs.io/en/latest/modules/nn.html#torch_geometric.nn.pool.voxel_grid
 Point graph:        ...
 Points and fields:  Try to find representation of forcefields 
+
+maybe uninstall :
+
+conda uninstall gcc
+conda install -c conda-forge isl=0.17.1
+conda install -c salford_systems gcc-6=6.2.0
+conda install -c anaconda gcc
+
+TODO: GIVEN THE GPU / GCC6 PYTHON INSTALLATION CREATE NEW ENV
