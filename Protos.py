@@ -22,15 +22,15 @@ class Protos:
     def __init__(self,
                  radius,
                  download=False,
-                 preprocess=False,
-                 analysis=True,
+                 preprocess=True,
+                 analysis=False,
                  mode='coulomb'):
         self.radius = radius
 
         if download:
             download_proteins()
 
-        limit = 50
+        limit = np.inf
         if preprocess:
             print("preprocessing")
             pathname = PATH + 'raw/*_pdb.txt'
