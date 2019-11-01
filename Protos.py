@@ -23,8 +23,7 @@ class Protos:
                  radius,
                  download=False,
                  preprocess=True,
-                 analysis=False,
-                 mode='coulomb'):
+                 analysis=False):
         self.radius = radius
 
         if download:
