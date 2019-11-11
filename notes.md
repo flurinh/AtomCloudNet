@@ -52,4 +52,3 @@ conda install -c conda-forge isl=0.17.1
 conda install -c salford_systems gcc-6=6.2.0
 conda install -c anaconda gcc
 
-TODO: GIVEN THE GPU / GCC6 PYTHON INSTALLATION CREATE NEW ENV
