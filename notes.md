@@ -52,3 +52,5 @@ conda install -c conda-forge isl=0.17.1
 conda install -c salford_systems gcc-6=6.2.0
 conda install -c anaconda gcc
 
+https://github.com/yanx27/Pointnet_Pointnet2_pytorch/tree/31deedb10b85ec30178df57a6389b2f326f7c970/model
+
