@@ -47,7 +47,7 @@ def load_pdb(name, path=PATH):
     return xyz, types, res
 
 
-def make_dist_file(name, xyz, types, res_list, radius):
+def make_dist_file(xyz, types, res_list, name, radius):
     """
     Make Histogram for each amino acid.
     Center: N
@@ -60,16 +60,18 @@ def make_dist_file(name, xyz, types, res_list, radius):
             for j in range(0, len(xyz)):
                 dist = np.linalg.norm(xyz[i] - xyz[j])
                 if dist < radius:
-                    hist.append([types[j], xyz[j].tolist()])
+                    print([types[j], (xyz[j]-xyz[i]).tolist()])
+                    hist.append([types[j], (xyz[j]-xyz[i]).tolist()])
                 else:
                     pass
         if len(hist) > 0:
             hist_list.append(hist)
+    """        
     for res, hist in zip(res_list, hist_list):
         filename = PATH + 'hist/' + name + '_' + res[1] + '_' + res[0] + '.txt'
         with open(filename, 'w', newline='') as f:
             wr = csv.writer(f)
-            wr.writerows(hist)
+            wr.writerows(hist)"""
 
 
 def get_shiftfile():

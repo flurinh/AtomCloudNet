@@ -65,6 +65,7 @@ class Protos:
             print("Cleaning txt files...")
             clean_XYZ()
             clean_XYZ()
+            get_all_stupid_atoms()
 
             hist_files = glob.glob(PATH + 'hist/*.txt')
             print("Casting to xyz format...")

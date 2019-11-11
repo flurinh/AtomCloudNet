@@ -175,6 +175,40 @@ def london_disp(z, r):
 
 
 
+def addlineto_xyz(name, path=PATH):
+    """
+    Shape your XYZ
+    Get all xyzs in one foleder and txtfile with all shifts and then execute the two functions to get proper xyz file
+    """
+    file = open(path + 'shift/' + name + '.txt')
+    stringList = file.readlines()
+    file.close()
+    fname = []
+    lines = []
+    for line in stringList:
+        lines.append(line)
+        tokens = line.split()
+        fname.append(tokens[0])
+    xyzs = glob.glob(path + 'hist/*.xyz')
+    with open(path + 'shift/' + name + '.txt') as openfile:
+        for line in openfile:
+            for part in line.split():
+                for j in xyzs:
+                    if j in path + 'hist/' + part:
+                        filey = open(j)
+                        stringListy = filey.readlines()
+                        filey.close()
+                        stringListy = [l.strip('\n').strip(' ') for l in stringListy]
+                        with open(j, "w") as outfile:
+                            outfile.write(str(len(stringListy)) + ('\n'))
+                            outfile.write(line)
+                            outfile.writelines("%s\n" % line for line in stringListy)
+                        outfile.close()
+    openfile.close()
+    return
+
+
+
 
 
 
