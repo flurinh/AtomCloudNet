@@ -34,6 +34,8 @@ def make_dist_vector(xyz, types, res_list, name, radius):
     Center: N
     Radius: dist = 6
     """
+    if not os.path.isdir(PATH + "CV/"):
+        os.mkdir(PATH + "CV/")
     cv_list = []
     for i in trange(0, len(xyz)):
         cv = []
@@ -49,7 +51,7 @@ def make_dist_vector(xyz, types, res_list, name, radius):
             cv_list.append(cv)
             #print(cv_list)
     for res, cv in zip(res_list, cv_list):
-        filename = PATH + 'CV/' + name + '_' + res[1] + '_' + res[0] + '.txt'
+        filename = PATH + 'CV/' + name + '_' + res[1] + '_' + res[0] + '.xyz'
         with open(filename, 'w', newline='') as f:
             wr = csv.writer(f)
             wr.writerows(cv)
@@ -59,7 +61,7 @@ def clean_XYZ(path=PATH):
     """
     clean xyz files with coordinates
     """
-    filenames = glob.glob(path + 'CV/*.txt')
+    filenames = glob.glob(path + 'CV/*.xyz')
     for filename in tqdm(filenames):
         with open(filename, 'r') as file:
             temp = file.read().replace("[", "   ").replace("]", "   ").replace("HA ", "H  ").replace("HA3 ",
@@ -120,7 +122,7 @@ def clean_XYZ(path=PATH):
 
 
 def get_all_stupid_atoms(path=PATH):
-    fnames = glob.glob(path + 'CV/*.txt')
+    fnames = glob.glob(path + 'CV/*.xyz')
     for f in tqdm(fnames):
         i = open(f)
         stringlist = i.readlines()
@@ -139,7 +141,7 @@ def get_all_stupid_atoms(path=PATH):
 
 
 def get_nucleusNumber(path=PATH):
-    filenames = glob.glob(path + 'CV/*.txt')
+    filenames = glob.glob(path + 'CV/*.xyz')
     for filename in tqdm(filenames):
         with open(filename, 'r') as file:
             temp = file.read().replace("N", "7  ").replace("C", "6  ").replace("H", "1  ").replace("S", "16  ").replace("O", "8  ")
@@ -152,7 +154,7 @@ def get_nucleusNumber(path=PATH):
 
 
 def get_cv(path=PATH):
-    fnames = glob.glob(path + 'CV/*.txt')
+    fnames = glob.glob(path + 'CV/*.xyz')
     for f in tqdm(fnames):
         i = open(f)
         stringlist = i.readlines()
@@ -174,6 +176,32 @@ def london_disp(z, r):
     return (z * zn) / (r ** 6)
 
 
+def get_pH(name, path=PATH):
+    files = [path + name + '.pdb']
+    for fname in files:
+        f = open(fname)
+        stringlist = f.readlines()
+        f.close()
+        for line in stringlist:
+            if "PH " in line:
+                a = line.split()
+                b = a[-1]
+                #print("pH:", b)
+
+        for line in stringlist:
+            if "(KELVIN)" in line:
+                c = line.split()
+                d = c[-1]
+                #print("Kelvin:", d)
+
+        for line in stringlist:
+            if "IONIC STRENGTH " in line:
+                e = line.split()
+                f = e[-1]
+                #print("Ionic strenght:", f)
+    return b, d, f
+
+
 
 def addlineto_xyz(name, path=PATH):
     """
@@ -189,19 +217,21 @@ def addlineto_xyz(name, path=PATH):
         lines.append(line)
         tokens = line.split()
         fname.append(tokens[0])
-    xyzs = glob.glob(path + 'hist/*.xyz')
+    xyzs = glob.glob(path + 'CV/*.xyz')
+
+    b, d, f = get_pH(name=name)
+
     with open(path + 'shift/' + name + '.txt') as openfile:
         for line in openfile:
             for part in line.split():
                 for j in xyzs:
-                    if j in path + 'hist/' + part:
+                    if j in path + 'CV/' + part:
                         filey = open(j)
                         stringListy = filey.readlines()
                         filey.close()
                         stringListy = [l.strip('\n').strip(' ') for l in stringListy]
                         with open(j, "w") as outfile:
-                            outfile.write(str(len(stringListy)) + ('\n'))
-                            outfile.write(line)
+                            outfile.write(str(len(stringListy)) +' '+ b +' '+ d +' '+ f +' '+ line)
                             outfile.writelines("%s\n" % line for line in stringListy)
                         outfile.close()
     openfile.close()
@@ -211,15 +241,14 @@ def addlineto_xyz(name, path=PATH):
 
 
 
-
-
-#xyz, types, res = load_pdb(path=PATH, name='2L7B')
-#xyz = np.asarray(xyz)
-#res = np.asarray(res)
-#make_dist_vector(xyz, types, res, name='2L7B', radius=6)
-#clean_XYZ()
-#clean_XYZ()
-#get_all_stupid_atoms()
-#get_nucleusNumber()
+xyz, types, res = load_pdb(path=PATH, name='2L7B')
+xyz = np.asarray(xyz)
+res = np.asarray(res)
+make_dist_vector(xyz, types, res, name='2L7B', radius=6)
+clean_XYZ()
+clean_XYZ()
+get_all_stupid_atoms()
+get_nucleusNumber()
 get_cv()
+addlineto_xyz(name='2L7B')
 
