@@ -4,9 +4,6 @@ from tqdm import tqdm
 import time
 import os
 
-if not os.path.isdir('data'):
-    os.path.mkdir('data')
-
 """
 browser = mechanicalsoup.Browser()
 page = browser.get(PATH)

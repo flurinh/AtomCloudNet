@@ -6,7 +6,7 @@ import csv
 from collections import namedtuple
 from Bio.PDB import PDBParser
 
-PATH = 'data/'
+PATH = 'data2/'
 
 
 def load_xyz(filepath):
@@ -60,7 +60,7 @@ def make_dist_file(xyz, types, res_list, name, radius):
             for j in range(0, len(xyz)):
                 dist = np.linalg.norm(xyz[i] - xyz[j])
                 if dist < radius:
-                    print([types[j], (xyz[j]-xyz[i]).tolist()])
+                    # print([types[j], (xyz[j]-xyz[i]).tolist()])
                     hist.append([types[j], (xyz[j]-xyz[i]).tolist()])
                 else:
                     pass

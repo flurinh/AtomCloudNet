@@ -7,7 +7,7 @@ from tqdm import tqdm, trange
 import argparse
 import os
 
-PATH = 'data/'
+PATH = 'data2/'
 
 
 def check_hist(name):
@@ -38,13 +38,13 @@ class Protos:
                 if '_pdb.txt' in txt:
                     new_src = txt.replace('_pdb.txt', '.pdb')
                     os.rename(txt, new_src)
-            new_src_path = 'data/raw/*.pdb'
+            new_src_path = PATH+'raw/*.pdb'
             filenames = glob.glob(pathname=new_src_path)
             if limit < len(filenames):
                 filenames = filenames[:limit]
             print("Starting to preprocess {} proteins...".format(len(filenames)))
 
-            id_list = list(name[9:13] for name in filenames)
+            id_list = list(name[10:14] for name in filenames)
 
             if not os.path.isdir(PATH + 'hist'):
                 os.mkdir(PATH + 'hist')
@@ -60,7 +60,7 @@ class Protos:
                         xyz, types, res = load_pdb(path=PATH + 'raw/', name=i)
                         xyz = np.asarray(xyz)
                         res = np.asarray(res)
-                        make_dist_file(i, xyz, types, res, radius=radius)
+                        make_dist_file(xyz, types, res, i, radius=radius)
 
             print("Cleaning txt files...")
             clean_XYZ()
