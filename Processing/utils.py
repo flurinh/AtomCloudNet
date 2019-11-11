@@ -143,8 +143,8 @@ def clean_XYZ(path=PATH):
             file.write(temp)
             file.close()
 
-def get_all_stupid_atoms():
-    fnames = glob.glob("*.xyz")
+def get_all_stupid_atoms(path=PATH):
+    fnames = glob.glob(path + 'hist/*.xyz')
     for f in tqdm(fnames):
         i = open(f)
         stringlist = i.readlines()

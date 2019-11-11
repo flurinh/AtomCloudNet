@@ -5,6 +5,7 @@ import os
 import csv
 from collections import namedtuple
 from Bio.PDB import PDBParser
+from sklearn.preprocessing import scale
 
 PATH = '../data/'
 
@@ -131,10 +132,10 @@ def get_all_stupid_atoms(path=PATH):
                 if (tokens[0] != "H" and tokens[0] != "O" and tokens[0] != "N" and tokens[0] != "C" and tokens[0] != "S"):
                 #if (tokens[0] != "1" and tokens[0] != "8" and tokens[0] != "7" and tokens[0] != "6" and tokens[0] != "16"):
                     print(f)
-                    """try:
+                    try:
                         os.remove(f)
                     except:
-                        pass"""
+                        pass
 
 
 def get_nucleusNumber(path=PATH):
@@ -157,14 +158,20 @@ def get_cv(path=PATH):
         stringlist = i.readlines()
         i.close()
 
-        dist = []
-        nucleus = []
-
+        cm = []
         for line in stringlist:
             tokens = line.split()
-            nucleus.append(float(tokens[0]))
-            dist.append(float(tokens[1]))
-        print(nucleus, dist)
+            if not float(tokens[1]) == 0:
+                cm.append(london_disp(float(tokens[0]), float(tokens[1])))
+                
+        with open(f, 'w') as file:
+            for cm_ in cm:
+                file.write("%s\n" % cm_)
+            file.close()
+
+def london_disp(z, r):
+    zn = 7
+    return (z * zn) / (r ** 6)
 
 
 
@@ -181,3 +188,4 @@ def get_cv(path=PATH):
 #get_all_stupid_atoms()
 #get_nucleusNumber()
 get_cv()
+
