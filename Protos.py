@@ -7,7 +7,7 @@ from tqdm import tqdm, trange
 import argparse
 import os
 
-PATH = 'data2/'
+PATH = 'data/'
 
 
 def check_hist(name):
@@ -44,7 +44,7 @@ class Protos:
                 filenames = filenames[:limit]
             print("Starting to preprocess {} proteins...".format(len(filenames)))
 
-            id_list = list(name[10:14] for name in filenames)
+            id_list = list(name[9:13] for name in filenames)
 
             if not os.path.isdir(PATH + 'hist'):
                 os.mkdir(PATH + 'hist')
@@ -61,11 +61,15 @@ class Protos:
                         xyz = np.asarray(xyz)
                         res = np.asarray(res)
                         make_dist_file(xyz, types, res, i, radius=radius)
+                        make_dist_vector(xyz, types, res, i, radius=radius)
 
             print("Cleaning txt files...")
-            clean_XYZ()
-            clean_XYZ()
+            clean_XYZ(mode='CV')
+            clean_XYZ(mode='CV')
             get_all_stupid_atoms()
+            get_all_stupid_atoms(mode='CV')
+            get_nucleusNumber()
+            get_cv()
 
             hist_files = glob.glob(PATH + 'hist/*.txt')
             print("Casting to xyz format...")
@@ -87,10 +91,15 @@ class Protos:
                     get_shift(path=PATH + 'raw/', name=i)
 
             mv_Res_without_Shift()
+            mv_Res_without_Shift(mode='CV')
+
+            clean_XYZ()
+            clean_XYZ()
 
             print("Finalizing XYZ file...")
             for i in tqdm(id_list):
                 addlineto_xyz(i)
+                addlineto_xyz(i, mode='CV')
 
         if analysis:
             xyz = xyz_loader(limit=limit)

@@ -121,8 +121,8 @@ def clean_XYZ(path=PATH):
             file.close()
 
 
-def get_all_stupid_atoms(path=PATH):
-    fnames = glob.glob(path + 'CV/*.xyz')
+def get_all_stupid_atoms(mode='hist', path=PATH):
+    fnames = glob.glob(path + mode + '/*.xyz')
     for f in tqdm(fnames):
         i = open(f)
         stringlist = i.readlines()
@@ -203,7 +203,7 @@ def get_pH(name, path=PATH):
 
 
 
-def addlineto_xyz(name, path=PATH):
+def addlineto_xyz(name, mode='hist', path=PATH):
     """
     Shape your XYZ
     Get all xyzs in one foleder and txtfile with all shifts and then execute the two functions to get proper xyz file
@@ -217,7 +217,7 @@ def addlineto_xyz(name, path=PATH):
         lines.append(line)
         tokens = line.split()
         fname.append(tokens[0])
-    xyzs = glob.glob(path + 'CV/*.xyz')
+    xyzs = glob.glob(path + mode + '/*.xyz')
 
     b, d, f = get_pH(name=name)
 
@@ -225,7 +225,7 @@ def addlineto_xyz(name, path=PATH):
         for line in openfile:
             for part in line.split():
                 for j in xyzs:
-                    if j in path + 'CV/' + part:
+                    if j in path + mode + '/' + part:
                         filey = open(j)
                         stringListy = filey.readlines()
                         filey.close()
