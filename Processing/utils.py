@@ -66,12 +66,11 @@ def make_dist_file(xyz, types, res_list, name, radius):
                     pass
         if len(hist) > 0:
             hist_list.append(hist)
-    """        
     for res, hist in zip(res_list, hist_list):
         filename = PATH + 'hist/' + name + '_' + res[1] + '_' + res[0] + '.txt'
         with open(filename, 'w', newline='') as f:
             wr = csv.writer(f)
-            wr.writerows(hist)"""
+            wr.writerows(hist)
 
 
 def get_shiftfile():
