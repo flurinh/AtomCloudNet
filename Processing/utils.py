@@ -17,20 +17,23 @@ def london_disp(z, r):
 def load_xyz(filepath):
     with open(filepath, 'r') as fin:
         try:
-            natoms = int(fin.readline())
-            title = fin.readline()[:-1]
+            # natoms = int(fin.readline())
+            title = fin.readline().split(' ')
+            natoms = int(title[0])
             coords = np.zeros([natoms, 3], dtype="float64")
             atomtypes = []
+            prots = []
             for x in coords:
                 line = fin.readline().split()
                 atomtypes.append(line[0])
+                prots.append(int(line[0].replace("N", "7").replace("C", "6").replace("H", "1").replace("S", "16").replace("O", "8")))
                 x[:] = list(map(float, line[1:4]))
 
-            return namedtuple("XYZFile", ["coords", "title", "atomtypes"]) \
-                (coords, title, atomtypes)
+            return namedtuple("XYZFile", ["coords", "title", "atomtypes", "prots"]) \
+                (coords, title, atomtypes, prots)
         except:
-            return namedtuple("XYZFile", ["coords", "title", "atomtypes"]) \
-                (None, None, None)
+            return namedtuple("XYZFile", ["coords", "title", "atomtypes", "prots"]) \
+                (None, None, None, None)
 
 
 def load_pdb(name, path=PATH):
@@ -328,28 +331,30 @@ def mv_Res_without_Shift(mode='hist', path=PATH):
 
 
 def get_pH(name, path=PATH):
-    files = [path + 'raw/' + name + '.pdb']
-    for fname in files:
-        f = open(fname)
-        stringlist = f.readlines()
-        f.close()
-        for line in stringlist:
-            if "PH " in line:
-                a = line.split()
-                b = a[-1]
-                # print("pH:", b)
+    fname = path + 'raw/' + name + '.pdb'
+    f = open(fname)
+    stringlist = f.readlines()
+    f.close()
+    b = None
+    d = None
+    f = None
+    for line in stringlist:
+        if "PH " in line:
+            a = line.split()
+            b = a[-1]
+            # print("pH:", b)
 
-        for line in stringlist:
-            if "(KELVIN)" in line:
-                c = line.split()
-                d = c[-1]
-                # print("Kelvin:", d)
+    for line in stringlist:
+        if "(KELVIN)" in line:
+            c = line.split()
+            d = c[-1]
+            # print("Kelvin:", d)
 
-        for line in stringlist:
-            if "IONIC STRENGTH " in line:
-                e = line.split()
-                f = e[-1]
-                # print("Ionic strenght:", f)
+    for line in stringlist:
+        if "IONIC STRENGTH " in line:
+            e = line.split()
+            f = e[-1]
+            # print("Ionic strenght:", f)
     return b, d, f
 
 
@@ -370,7 +375,7 @@ def addlineto_xyz(name, mode='hist', path=PATH):
     xyzs = glob.glob(path + mode + '/*.xyz')
 
     b, d, f = get_pH(name=name)
-
+    processed = False
     with open(path + 'shift/' + name + '.txt') as openfile:
         for line in openfile:
             for part in line.split():
@@ -378,11 +383,24 @@ def addlineto_xyz(name, mode='hist', path=PATH):
                     if j in path + mode + '/' + part:
                         filey = open(j)
                         stringListy = filey.readlines()
+                        first_line = stringListy[0].split(' ')
                         filey.close()
-                        stringListy = [l.strip('\n').strip(' ') for l in stringListy]
-                        with open(j, "w") as outfile:
-                            outfile.write(str(len(stringListy)) + ' ' + b + ' ' + d + ' ' + f + ' ' + line)
-                            outfile.writelines("%s\n" % line for line in stringListy)
-                        outfile.close()
-    openfile.close()
+                        # only rework file if it has not yet been processed
+                        if len(first_line[0]) == 1:
+                            stringListy = [l.strip('\n').strip(' ') for l in stringListy]
+                            with open(j, "w") as outfile:
+                                outfile.write(str(len(stringListy)) + ' ' + b + ' ' + d + ' ' + f + ' ' + line)
+                                outfile.writelines("%s\n" % line for line in stringListy)
+                            outfile.close()
+                        else:
+                            processed = True
+                        if processed:
+                            break
+                    if processed:
+                        break
+                if processed:
+                    break
+            if processed:
+                break
+        openfile.close()
     return
