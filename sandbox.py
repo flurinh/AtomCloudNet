@@ -18,30 +18,51 @@ path = 'data/hist'
 
 
 
-data = xyz_loader(limit=1280, path=path + '/*.xyz')
-
-
 batch_size = 1
+real_batch_size = 128
+nepochs = 30
+
+feats = ['prot']
+
+data = xyz_loader(feats=feats, limit=12800, path=path + '/*.xyz')
 loader = DataLoader(data, batch_size=batch_size, shuffle=True)
-model = PointNet2ClsSsg().double()
+model = PointNet2ClsSsg(nfeats=len(feats)).double()
 
 criterion = nn.MSELoss()
-opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+opt = torch.optim.Adam(model.parameters(), lr=5e-5)
 model.train()
 opt.zero_grad()
-real_batch_size = 128
-nepochs = 10
+model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+params = sum([np.prod(p.size()) for p in model_parameters])
+print("Number trainable parameters:", params)
+
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+print("Using device:", device)
+multi_gpu = None
+if multi_gpu is not None:
+    device_ids = [int(x) for x in multi_gpu.split(',')]
+    torch.backends.cudnn.benchmark = True
+    model.cuda(device_ids[0])
+    model = torch.nn.DataParallel(model, device_ids=device_ids)
+else:
+    model.to(device)
+
+
 for e in range(nepochs):
-    for i, sample in enumerate(tqdm(loader)):
-        xyz = sample[0].permute(0, 2, 1)
-        feat = sample[1].view(batch_size, 1, -1)
+    for i, sample in enumerate(tqdm(loader), start = 1):
+        xyz = sample[0].permute(0, 2, 1).to(device)
+        feat = sample[1].view(batch_size, -1, xyz.shape[2]).to(device)
         output = model(xyz, feat)
-        if i % real_batch_size == 1 or i == 0:
-            loss = criterion(sample[2], output)
-        elif i % real_batch_size == 0:
-            loss += criterion(sample[2], output)
+        new_loss = criterion(output.float(), sample[2].float())
+        # print(output.float(), sample[2].float())
+        if i % real_batch_size == 1:
+            loss = new_loss
+        else:
+            loss = loss + new_loss
+        if i % real_batch_size == 0:
             loss = loss / real_batch_size
             loss.backward()
             opt.step()
-            print(loss.item())
+            print("loss:", torch.sqrt(loss).cpu().item() * 50)
             opt.zero_grad()
+    torch.save(model, 'model.pt')

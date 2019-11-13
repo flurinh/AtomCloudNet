@@ -2,6 +2,7 @@ import glob
 from tqdm import trange, tqdm
 import numpy as np
 import pandas as pd
+import random
 
 from Processing.utils import *
 
@@ -12,22 +13,29 @@ from torch.autograd import Variable
 
 class xyz_loader(Dataset):
     def __init__(self,
+                 feats,
                  limit=np.inf,
+                 shuffle=True,
                  path='data/hist/*.xyz'):
         self.data = {}
+        self.ph = False
+        if 'ph' in feats:
+            self.ph = True
+
         max_length = 120
         files = glob.glob(pathname=path)
+        if shuffle:
+            random.shuffle(files)
         counter = 0
-        print("Dataloader processing files...")
+        print("Dataloader processing files... Trying to accumulate {} training points.".format(limit))
 
         # TODO: only add valid proteins
         rt_range = []
         salconc_range = []
-        ph_range = []
+        ph_range = [6, 9]
         natom_range = [40, 150]
-
         for file_id, file in enumerate(tqdm(files)):
-            if file_id < limit:
+            if counter < limit:
                 data = load_xyz(file)
                 if data.title is not None:
                     data_ = data.title
@@ -36,26 +44,28 @@ class xyz_loader(Dataset):
                     T = data_[2]
                     salconc = data_[3]
                     name = data_[4]
-                    n_shift = float(data_[5]) / 150
-                    h_shift = float(data_[6]) / 15
+                    n_shift = (float(data_[5]) - 100) / 50
+                    h_shift = (float(data_[6]) - 5) / 10
                     coords = data.coords
                     xyz = np.zeros((coords.shape[0], 3))
                     for i in range(coords.shape[0]):
                         for j in range(coords.shape[1]):
                             xyz[i, j] = coords[i, j]
                     atoms = data.atomtypes
-                    data_dict = {'name': name,
-                                 'natoms': natoms,
-                                 'ph': ph,
-                                 'salconc': salconc,
-                                 'T': T,
-                                 'xyz': xyz,
-                                 'prots': data.prots,
-                                 '15N-shift': n_shift,
-                                 '1H-shift': h_shift}
                     if natom_range[0] < natoms < natom_range[1]:
-                        self.data.update({str(counter): data_dict})
-                        counter += 1
+                        if ph.isdigit():
+                            if ph_range[0] <= float(ph) <= ph_range[1]:
+                                data_dict = {'name': name,
+                                             'natoms': natoms,
+                                             'ph': float(ph),
+                                             'salconc': salconc,
+                                             'T': T,
+                                             'xyz': xyz,
+                                             'prots': data.prots,
+                                             '15N-shift': n_shift,
+                                             '1H-shift': h_shift}
+                                self.data.update({str(counter): data_dict})
+                                counter += 1
             else:
                 break
 
@@ -63,8 +73,13 @@ class xyz_loader(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
+        p = np.asarray(self.data[str(idx)]['prots'])
+        if self.ph:
+            feat = np.vstack((p.astype(float), np.full(p.shape, self.data[str(idx)]['ph'])))
+        else:
+            feat = self.data[str(idx)]['prots']
         return torch.DoubleTensor(self.data[str(idx)]['xyz']), \
-               torch.DoubleTensor(self.data[str(idx)]['prots']), \
+               torch.DoubleTensor(feat), \
                torch.tensor(self.data[str(idx)]['15N-shift']), \
                torch.tensor(self.data[str(idx)]['1H-shift'])
 
