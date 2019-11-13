@@ -19,12 +19,14 @@ path = 'data/hist'
 
 
 batch_size = 1
-real_batch_size = 128
+real_batch_size = 8
 nepochs = 30
 
-feats = ['prot']
+feats = ['prot', 'ph']
 
-data = xyz_loader(feats=feats, limit=12800, path=path + '/*.xyz')
+data = xyz_loader(feats=feats, limit=1280, path=path + '/*.xyz')
+
+data.plot_hist()
 loader = DataLoader(data, batch_size=batch_size, shuffle=True)
 model = PointNet2ClsSsg(nfeats=len(feats)).double()
 

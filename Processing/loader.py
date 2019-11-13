@@ -8,6 +8,8 @@ from Processing.utils import *
 
 import torch
 from torch.utils.data import Dataset
+import matplotlib.pyplot as plt
+
 from torch.autograd import Variable
 
 
@@ -32,7 +34,8 @@ class xyz_loader(Dataset):
         # TODO: only add valid proteins
         rt_range = []
         salconc_range = []
-        ph_range = [6, 9]
+        self.ph_list = []
+        ph_range = [4.5, 8]
         natom_range = [40, 150]
         for file_id, file in enumerate(tqdm(files)):
             if counter < limit:
@@ -54,6 +57,7 @@ class xyz_loader(Dataset):
                     atoms = data.atomtypes
                     if natom_range[0] < natoms < natom_range[1]:
                         if ph.isdigit():
+                            self.ph_list.append(float(ph))
                             if ph_range[0] <= float(ph) <= ph_range[1]:
                                 data_dict = {'name': name,
                                              'natoms': natoms,
@@ -83,3 +87,8 @@ class xyz_loader(Dataset):
                torch.tensor(self.data[str(idx)]['15N-shift']), \
                torch.tensor(self.data[str(idx)]['1H-shift'])
 
+    def plot_hist(self):
+        bins = np.linspace(3.0, 10.0, 71)
+        print(bins)
+        plt.hist(self.ph_list, bins = np.linspace(3.0, 10.0, 70))
+        plt.show()
