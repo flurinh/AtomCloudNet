@@ -1,9 +1,9 @@
-from Architectures.point_util import *
+from Architectures.cloud_utils import *
 
 
 class AtomResiduals(nn.Module):
     def __init__(self, in_channel, res_blocks):
-        """
+        r"""
         Calculate Atom Residuals. Output is twice the size of the input
         :param in_channel: number of features of the atom
         :param res_blocks: number of residual blocks
@@ -23,74 +23,58 @@ class AtomResiduals(nn.Module):
         return new_features
 
 
-class Atomcloud(nn.Module):
-    def __init__(self, natoms, nfeats, layers):
-        """
-        Atomcloud is the module transforming a atomcloud into a vector - this vector represents the new features of
+# Atomclouds should be universal
+class AtomcloudVectorization(nn.Module):
+    def __init__(self, natoms, nfeats, layers, mode):
+        r"""
+        Atomcloud is the module transforming an atomcloud into a vector - this vector represents the new features of
         the Atomcloud's centroid/center atom. This module takes fixed number of atoms and features input.
-        :param in_channel:
-        :param mlp:
+        :param natoms: number of atoms to be selected in the cloud
+        :param nfeats: number of features per atom
+        :param layers: list of <convolution filter size>'s
         """
-        super(Atomcloud, self).__init__()
+        super(AtomcloudVectorization, self).__init__()
         self.natoms = natoms
+        self.mode = mode
         self.cloud_convs = nn.ModuleList()
         self.cloud_norms = nn.ModuleList()
         last_channel = nfeats
         for out_channel in layers:
-            self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
-            self.mlp_bns.append(nn.BatchNorm2d(out_channel))
+            self.cloud_convs.append(nn.Conv2d(last_channel, out_channel, 1))
+            self.cloud_norms.append(nn.BatchNorm2d(out_channel))
             last_channel = out_channel
+
+    def forward(self, xyz, features, centroid):
+        # Todo: Find natoms closest atoms to centroid => corresponding cloud
+        cloud = cloud_sampling(xyz, features, self.natoms, self.mode)
+        # Todo: Use cloud's feature table as input to convolution, resulting in new features.
+
+        # Todo: Run convolution over cloud representation - This could/should be kernelized!
+
+        for i, conv in enumerate(self.cloud_convs):
+            bn = self.cloud_norms[i]
+            if new_features.shape[0] == 1:
+                new_points = F.relu(conv(new_features))
+            else:
+                new_features = F.relu(bn(conv(new_features)))
+
+        new_features = torch.max(new_features, 2)[0]
+        return new_features
+
+
+class Atomcloud(nn.Module):
+    def __init__(self, natoms, nfeat, layers=[32, 64, 128], mode='distance'):
+        super(Atomcloud, self).__init__()
+        self.cloud = AtomcloudVectorization(natoms=natoms, nfeats=nfeat, layers=layers, mode=mode)
 
     def forward(self, xyz, features):
         xyz = xyz.permute(0, 2, 1)
         if features is not None:
-                features = features.permute(0, 2, 1)
-        for i, conv in enumerate(self.cloud_convs):
-            bn = self.mlp_bns[i]
-            if new_points.shape[0] == 1:
-                new_points = F.relu(conv(new_points))
-            else:
-                new_points = F.relu(bn(conv(new_points)))
-
-        new_points = torch.max(new_points, 2)[0]
-        new_xyz = new_xyz.permute(0, 2, 1)
-        return new_xyz, new_points
-
-
-class AtomcloudCollapse(nn.Module):
-    def __init__(self, radius, natoms, in_channel, layers):
-        """
-        AtomcloudCollapse is the module transforming a atomcloud into a vector - this vector represents the new features of
-        the Atomcloud's centroid/center atom. This module selects the corresponding region of interest
-        :param radius: radius to be included in the calculation
-        :param natoms: number of atoms to
-        :param in_channel:
-        :param mlp:
-        """
-        super(AtomcloudCollapse, self).__init__()
-        self.radius = radius
-        self.natoms = natoms
-        self.cloud_convs = nn.ModuleList()
-        self.cloud_norms = nn.ModuleList()
-        last_channel = in_channel
-        for out_channel in layers:
-            self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
-            self.mlp_bns.append(nn.BatchNorm2d(out_channel))
-            last_channel = out_channel
-
-    def forward(self, xyz, features, centroid=[0, 0, 0]):
-        xyz = xyz.permute(0, 2, 1)
-        if features is not None:
             features = features.permute(0, 2, 1)
-        new_xyz = xyz
-        return new_xyz, features
-
-
-class AtomcloudVectorization(nn.Module):
-    def __init__(self, infeat, outfeat, mode='distance'):
-        super(AtomcloudVectorization, self).__init__()
-        pass
-
-    def forward(self, xyz, features, centroid):
-        avec = None
-        return avec
+        # Todo: for each atom go through the entire model and generate new features
+        for i in range(xyz.shape[0]):
+            centroid = (xyz[i], features[i])
+            # Shift coordinates of xyz to center cloud
+            xyz_ = xyz - centroid[0]
+            features[i] = self.cloud(xyz_, features, centroid)
+        return xyz, features
