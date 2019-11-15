@@ -1,22 +1,47 @@
-print("hello")
-
+from Processing.loader import *
 from Protos import *
-"""
-xyz, types, res = load_pdb(path=PATH, name='2L7B')
-xyz = np.asarray(xyz)
-res = np.asarray(res)
-make_dist_file(xyz, types, res, name='2L7B', radius=6)"""
+from Architectures.CoulombNet import *
 
-limit = np.inf
-new_src_path = PATH + 'raw/*.pdb'
-filenames = glob.glob(pathname=new_src_path)
-print(len(filenames))
-if limit < len(filenames):
-    filenames = filename[:limit]
-print("Starting to preprocess {} proteins...".format(len(filenames)))
+import torch.nn as nn
 
-id_list = list(name[9:13] for name in filenames)
+from tqdm import tqdm, trange
+import numpy as np
 
-for i in tqdm(id_list):
-    addlineto_xyz(i, mode='hist')
-    addlineto_xyz(i, mode='CV')
+from torch.utils.data import DataLoader
+
+
+nepochs = 500
+limit_atoms = 150
+
+load_cv = coul_loader(limit=51200, limit_atoms=limit_atoms)
+training = DataLoader(load_cv, batch_size=512, shuffle=True)
+
+
+model = CoulombNet(limit_atoms, layers=[1024, 512, 256]).float()
+
+criterion = nn.MSELoss()
+
+opt = torch.optim.Adam(model.parameters(), lr=1e-2) #lr=1e-3
+
+opt.zero_grad()
+
+model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+params = sum([np.prod(p.size()) for p in model_parameters])
+print("Number trainable parameters:", params)
+
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+print("Using device:", device)
+model.to(device)
+print(model)
+model.train()
+for epoch in range(nepochs):
+    epoch_loss = []
+    for i, batch in enumerate(tqdm(training)):
+        opt.zero_grad()
+        output = model(batch[0].to(device).float())
+        loss = criterion(output, batch[1].float())
+        loss.backward()
+        opt.step()
+        epoch_loss.append(np.sqrt(loss.cpu().item()) * 50)
+        print(output[0].item(), batch[1][0].item())
+    print(sum(epoch_loss) / len(epoch_loss))

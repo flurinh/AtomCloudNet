@@ -5,52 +5,9 @@ import os
 import csv
 from collections import namedtuple
 from Bio.PDB import PDBParser
+from sklearn.preprocessing import scale
 
-PATH = 'data/'
-
-
-def london_disp(z, r):
-    zn = 7
-    return (z * zn) / (r ** 6)
-
-
-def load_xyz(filepath):
-    with open(filepath, 'r') as fin:
-        try:
-            # natoms = int(fin.readline())
-            title = fin.readline().split(' ')
-            natoms = int(title[0])
-            coords = np.zeros([natoms, 3], dtype="float64")
-            atomtypes = []
-            prots = []
-            for x in coords:
-                line = fin.readline().split()
-                atomtypes.append(line[0])
-                prots.append(int(line[0].replace("N", "7").replace("C", "6").replace("H", "1").replace("S", "16").replace("O", "8")))
-                x[:] = list(map(float, line[1:4]))
-
-            return namedtuple("XYZFile", ["coords", "title", "atomtypes", "prots"]) \
-                (coords, title, atomtypes, prots)
-        except:
-            return namedtuple("XYZFile", ["coords", "title", "atomtypes", "prots"]) \
-                (None, None, None, None)
-
-
-def load_xyz_cv(filepath):
-    with open(filepath, 'r') as fin:
-        try:
-            # natoms = int(fin.readline())
-            title = fin.readline().split(' ')
-            natoms = int(title[0])
-            coulombs = []
-            for x in range(natoms):
-                coulombs.append(float(fin.readline()))
-
-            return namedtuple("XYZFile", ["title", "coulombs"]) \
-                (title, coulombs)
-        except:
-            return namedtuple("XYZFile", ["title", "coulombs"]) \
-                (None, None)
+PATH = '../data/'
 
 
 def load_pdb(name, path=PATH):
@@ -72,40 +29,14 @@ def load_pdb(name, path=PATH):
     return xyz, types, res
 
 
-def make_dist_file(xyz, types, res_list, name, radius):
+def make_3Body_vector(xyz, types, res_list, name, radius):
     """
-    Make Histogram for each amino acid.
+    Make 3 Body Interaction Vector acording to Axilrod-Teller-Mutto (1943). "Interaction of the van der Waals Type Between Three Atoms". Journal of Chemical Physics. 11 (6): 299.
     Center: N
     Radius: dist = 6
     """
-    hist_list = []
-    for i in trange(0, len(xyz)):
-        hist = []
-        if types[i] == 'N':
-            for j in range(0, len(xyz)):
-                dist = np.linalg.norm(xyz[i] - xyz[j])
-                if dist < radius:
-                    # print([types[j], (xyz[j]-xyz[i]).tolist()])
-                    hist.append([types[j] + ' ', (xyz[j] - xyz[i]).tolist()])
-                else:
-                    pass
-        if len(hist) > 0:
-            hist_list.append(hist)
-    for res, hist in zip(res_list, hist_list):
-        filename = PATH + 'hist/' + name + '_' + res[1] + '_' + res[0] + '.txt'
-        with open(filename, 'w', newline='') as f:
-            wr = csv.writer(f)
-            wr.writerows(hist)
-
-
-def make_dist_vector(xyz, types, res_list, name, radius):
-    """
-    Make Coulomb Vector.
-    Center: N
-    Radius: dist = 6
-    """
-    if not os.path.isdir(PATH + "CV/"):
-        os.mkdir(PATH + "CV/")
+    if not os.path.isdir(PATH + "3Body/"):
+        os.mkdir(PATH + "3Body/")
     cv_list = []
     for i in trange(0, len(xyz)):
         cv = []
@@ -127,34 +58,11 @@ def make_dist_vector(xyz, types, res_list, name, radius):
             wr.writerows(cv)
 
 
-def get_nucleusNumber(path=PATH):
+def clean_XYZ(path=PATH):
+    """
+    clean xyz files with coordinates
+    """
     filenames = glob.glob(path + 'CV/*.xyz')
-    for filename in tqdm(filenames):
-        with open(filename, 'r') as file:
-            temp = file.read().replace("N", "7  ").replace("C", "6  ").replace("H", "1  ").replace("S", "16  ").replace(
-                "O", "8  ")
-            file.close()
-        with open(filename, 'w') as file:
-            file.write(temp)
-            file.close()
-
-
-def get_shiftfile():
-    fnames = glob.glob("*.xyz")
-    for f in fnames:
-        f = open(f)
-        stringlist = f.readlines()[1].split()
-        f.close()
-        print(stringlist[0], stringlist[2])
-
-
-def clean_XYZ(path=PATH, mode='hist'):
-    """
-    :param path:
-    :param mode: hist or CV
-    :return:
-    """
-    filenames = glob.glob(path + mode + '/*.xyz')
     for filename in tqdm(filenames):
         with open(filename, 'r') as file:
             temp = file.read().replace("[", "   ").replace("]", "   ").replace("HA ", "H  ").replace("HA3 ",
@@ -247,62 +155,25 @@ def get_all_stupid_atoms(mode='hist', path=PATH):
         for line in stringlist:
             tokens = line.split()
             if len(tokens) >= 2:
-                if (tokens[0] != "H" and tokens[0] != "O" and tokens[0] != "N" and tokens[0] != "C" and tokens[
-                    0] != "S"):
+                if (tokens[0] != "H" and tokens[0] != "O" and tokens[0] != "N" and tokens[0] != "C" and tokens[0] != "S"):
                     # if (tokens[0] != "1" and tokens[0] != "8" and tokens[0] != "7" and tokens[0] != "6" and tokens[0] != "16"):
-                    # print(f)
+                    print(f)
                     try:
                         os.remove(f)
                     except:
                         pass
 
 
-def get_shift(name, path=PATH):
-    """
-    Create file txt file with filename and chemical shift:
-    *.xyz   H-Shift
-    """
-    with open(path + name + ".txt", 'r') as file:
-        stringList = file.readlines()
-        file.close()
-
-    n_shift = []
-    n_res = []
-    n_res_num = []
-    h_shift = []
-    h_res = []
-    h_res_num = []
-
-    for line in stringList:
-        tokens = line.split()
-        invalid = False
-        if len(tokens) >= 27:
-            if 'N    ' in line:
-                try:
-                    res_num = int(tokens[17])
-                    n_res_num.append(res_num)
-                    n_shift.append(float(tokens[9]))
-                    n_res.append(tokens[5])
-                except:
-                    pass
-            if 'H    ' in line:
-                try:
-                    res_num = int(tokens[17])
-                    h_res_num.append(res_num)
-                    h_shift.append(float(tokens[9]))
-                    h_res.append(tokens[5])
-                except:
-                    pass
-    valid_residues = list(set(n_res_num).intersection(h_res_num))
-    fname = PATH + "shift/" + name + '.txt'
-    with open(fname, 'w') as outfile:
-        for i in range(len(valid_residues)):
-            num = ["%.3d" % x for x in valid_residues]
-            n_ = n_shift[i]
-            h_ = h_shift[i]
-            outfile.write((name + '_' + str(num[i]) + '_' + str(n_res[i]) + '.xyz ' + str(n_) + ' ' + str(h_) + '\n'))
-        outfile.close()
-    return n_shift, h_shift
+def get_nucleusNumber(path=PATH):
+    filenames = glob.glob(path + 'CV/*.xyz')
+    for filename in tqdm(filenames):
+        with open(filename, 'r') as file:
+            temp = file.read().replace("N", "7  ").replace("C", "6  ").replace("H", "1  ").replace("S", "16  ").replace(
+                "O", "8  ")
+            file.close()
+        with open(filename, 'w') as file:
+            file.write(temp)
+            file.close()
 
 
 def get_cv(path=PATH):
@@ -324,54 +195,34 @@ def get_cv(path=PATH):
             file.close()
 
 
-def mv_Res_without_Shift(mode='hist', path=PATH):
-    """
-    Move all xyz files without NMR shift into a different folder called noshift/ .
-    """
-    files = glob.glob('data/shift/*.txt')
-    fname = []
-    print("Finding residues without shift.")
-    for file in tqdm(files):
-        f = open(file)
-        stringList = f.readlines()
-        f.close()
-        for line in stringList:
-            tokens = line.split()
-            fname.append(path + mode + '/' + tokens[0])
-
-    print("Moving files with residues without shift.")
-    xyzs = glob.glob(path + mode + '/*.xyz')
-    for i in tqdm(xyzs):
-        if i not in fname:
-            os.remove(i)
-            # shutil.move(i, 'data/hist_noshift')
+def london_disp(z, r):
+    zn = 7
+    return (z * zn) / (r ** 6)
 
 
 def get_pH(name, path=PATH):
-    fname = path + 'raw/' + name + '.pdb'
-    f = open(fname)
-    stringlist = f.readlines()
-    f.close()
-    b = None
-    d = None
-    f = None
-    for line in stringlist:
-        if "PH " in line:
-            a = line.split()
-            b = a[-1]
-            # print("pH:", b)
+    files = [path + name + '.pdb']
+    for fname in files:
+        f = open(fname)
+        stringlist = f.readlines()
+        f.close()
+        for line in stringlist:
+            if "PH " in line:
+                a = line.split()
+                b = a[-1]
+                # print("pH:", b)
 
-    for line in stringlist:
-        if "(KELVIN)" in line:
-            c = line.split()
-            d = c[-1]
-            # print("Kelvin:", d)
+        for line in stringlist:
+            if "(KELVIN)" in line:
+                c = line.split()
+                d = c[-1]
+                # print("Kelvin:", d)
 
-    for line in stringlist:
-        if "IONIC STRENGTH " in line:
-            e = line.split()
-            f = e[-1]
-            # print("Ionic strenght:", f)
+        for line in stringlist:
+            if "IONIC STRENGTH " in line:
+                e = line.split()
+                f = e[-1]
+                # print("Ionic strenght:", f)
     return b, d, f
 
 
@@ -392,7 +243,7 @@ def addlineto_xyz(name, mode='hist', path=PATH):
     xyzs = glob.glob(path + mode + '/*.xyz')
 
     b, d, f = get_pH(name=name)
-    processed = False
+
     with open(path + 'shift/' + name + '.txt') as openfile:
         for line in openfile:
             for part in line.split():
@@ -400,24 +251,24 @@ def addlineto_xyz(name, mode='hist', path=PATH):
                     if j in path + mode + '/' + part:
                         filey = open(j)
                         stringListy = filey.readlines()
-                        first_line = stringListy[0].split(' ')
                         filey.close()
-                        # only rework file if it has not yet been processed
-                        if len(first_line[0]) == 1:
-                            stringListy = [l.strip('\n').strip(' ') for l in stringListy]
-                            with open(j, "w") as outfile:
-                                outfile.write(str(len(stringListy)) + ' ' + b + ' ' + d + ' ' + f + ' ' + line)
-                                outfile.writelines("%s\n" % line for line in stringListy)
-                            outfile.close()
-                        else:
-                            processed = True
-                        if processed:
-                            break
-                    if processed:
-                        break
-                if processed:
-                    break
-            if processed:
-                break
-        openfile.close()
+                        stringListy = [l.strip('\n').strip(' ') for l in stringListy]
+                        with open(j, "w") as outfile:
+                            outfile.write(str(len(stringListy)) + ' ' + b + ' ' + d + ' ' + f + ' ' + line)
+                            outfile.writelines("%s\n" % line for line in stringListy)
+                        outfile.close()
+    openfile.close()
     return
+
+
+"""xyz, types, res = load_pdb(path=PATH, name='2L7B')
+xyz = np.asarray(xyz)
+res = np.asarray(res)
+make_dist_vector(xyz, types, res, name='2L7B', radius=6)
+clean_XYZ()
+clean_XYZ()
+get_all_stupid_atoms()
+get_nucleusNumber()
+get_cv()
+addlineto_xyz(name='2L7B')"""
+
