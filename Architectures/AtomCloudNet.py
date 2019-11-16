@@ -4,14 +4,9 @@ from Architectures.cloud_utils import *
 
 class AtomCloudNet(nn.Module):
     def __init__(self):
-        super.__init__(self, AtomCloudNet)
-        self.cloud1 = Atomcloud()
-        self.atom_res1 = AtomResiduals()
-        self.cloud2 = Atomcloud()
-        self.atom_res2 = AtomResiduals()
-        self.cloud3 = Atomcloud()
-        self.atom_res3 = AtomResiduals()
-        self.cloud2vec = Atomcloud()
+        super(AtomCloudNet, self).__init__()
+        self.cloud1 = Atomcloud(natoms=16, nfeats=32, layers=[32, 64, 128], mode='distance')
+        self.atom_res1 = AtomResiduals(in_channel=33, res_blocks=2)
 
         self.fc1 = nn.Linear(1024, 512)
         self.bn1 = nn.BatchNorm1d(512)

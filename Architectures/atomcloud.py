@@ -12,7 +12,7 @@ class AtomResiduals(nn.Module):
         self.feature_size = in_channel
         self.atom_res_blocks = nn.ModuleList()
         for _ in range(res_blocks):
-            self.atom_res_blocks.append(nn.Dense(in_channel, in_channel))
+            self.atom_res_blocks.append(nn.Linear(in_channel, in_channel))
             self.atom_res_blocks.append(nn.ReLU(in_channel))
 
     def forward(self, features):
@@ -63,9 +63,9 @@ class AtomcloudVectorization(nn.Module):
 
 
 class Atomcloud(nn.Module):
-    def __init__(self, natoms, nfeat, layers=[32, 64, 128], mode='distance'):
+    def __init__(self, natoms, nfeats, layers=[32, 64, 128], mode='distance'):
         super(Atomcloud, self).__init__()
-        self.cloud = AtomcloudVectorization(natoms=natoms, nfeats=nfeat, layers=layers, mode=mode)
+        self.cloud = AtomcloudVectorization(natoms=natoms, nfeats=nfeats, layers=layers, mode=mode)
 
     def forward(self, xyz, features):
         xyz = xyz.permute(0, 2, 1)
