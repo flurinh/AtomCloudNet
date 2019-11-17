@@ -5,24 +5,28 @@ from time import time
 import numpy as np
 
 
-def cloud_sampling(xyz, features, natoms, mode='distance'):
+def cloud_sampling(xyz, features, natoms, radius=None, mode='distance'):
     """
     Return clouds for each atom with n atoms in them. The atoms are ranked according to distance or potential to each
     other and the then each cloud is assigned natoms.
     :param natoms: number of atoms to be selected for each cloud
     :param xyz:
     :param features:
+    :param radius: minimum distance from core
     :param mode: 'distance' or 'potential'
     :return: cloud
     """
-    B, N, C = xyz.shape
-    cloud_xyz = None
-    cloud_dists = None
-    cloud = None  # should have shape [B, natoms, C]
-    # Todo: given the mode rank all atoms and select the top natoms (closest)
+    batch_size, tot_n_atoms, nfeatures = xyz.shape
+    cloud_dists = None  # [B, N]
+    clouds = None  # [B, N]
+
+    # Todo: given the mode rank all atoms
+
+    # Todo: select the top natoms (closest)
 
     # Todo: return the cloud (features only!)
-    return cloud_xyz, cloud_dists, cloud
+
+    return clouds, cloud_dists
 
 
 def spatial_search(xyz, features, natoms, mode):
