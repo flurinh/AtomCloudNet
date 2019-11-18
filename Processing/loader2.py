@@ -18,7 +18,7 @@ class qm9_loader(Dataset):
                  feats,
                  limit=np.inf,
                  shuffle=True,
-                 path='data/hist/*.xyz'):
+                 path='data/QM9/*.xyz'):
         self.data = {}
         self.ph = False
         if 'ph' in feats:
@@ -39,7 +39,7 @@ class qm9_loader(Dataset):
         natom_range = [40, 150]
         for file_id, file in enumerate(tqdm(files)):
             if counter < limit:
-                data = load_xyz(file)
+                data = qm9_xyz(file)
                 if data.title is not None:
                     data_ = data.title
                     natoms = int(data_[0])

@@ -18,11 +18,9 @@ def qm9_xyz(filepath):
             prots = []
             prop = []
             partial = []
-
             properties = fin.readline().split()
             prop.append(properties)
             for x in coords:
-
                 line = fin.readline().split()
                 atomtypes.append(line[0])
                 partial.append(float(line[4]))
@@ -37,7 +35,6 @@ def qm9_xyz(filepath):
         except:
             return namedtuple("XYZFile", ["coords", "atomtypes", "prots", "partial"]) \
                 (None, None, None, None)
-
 
 
 
