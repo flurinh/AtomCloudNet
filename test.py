@@ -13,15 +13,15 @@ from torch.utils.data import DataLoader
 nepochs = 500
 limit_atoms = 150
 
-load_cv = coul_loader(limit=51200, limit_atoms=limit_atoms)
-training = DataLoader(load_cv, batch_size=512, shuffle=True)
+load_cv = coul_loader(limit=25600, limit_atoms=limit_atoms)
+training = DataLoader(load_cv, batch_size=16, shuffle=True)
 
 
 model = CoulombNet(limit_atoms, layers=[1024, 512, 256]).float()
 
 criterion = nn.MSELoss()
 
-opt = torch.optim.Adam(model.parameters(), lr=1e-2) #lr=1e-3
+opt = torch.optim.Adam(model.parameters(), lr=1e-3) #lr=1e-3
 
 opt.zero_grad()
 
@@ -39,9 +39,9 @@ for epoch in range(nepochs):
     for i, batch in enumerate(tqdm(training)):
         opt.zero_grad()
         output = model(batch[0].to(device).float())
-        loss = criterion(output, batch[1].float())
+        loss = criterion(output, batch[2].float())
         loss.backward()
         opt.step()
-        epoch_loss.append(np.sqrt(loss.cpu().item()) * 50)
-        print(output[0].item(), batch[1][0].item())
+        epoch_loss.append(np.sqrt(loss.cpu().item()) * 10)
+        print(output[0].item(), batch[2][0].item())
     print(sum(epoch_loss) / len(epoch_loss))
