@@ -6,11 +6,13 @@ import numpy as np
 
 
 def get_centroids(xyz, features=None):
-    ids = None
-    if features is None:
-        return ids
-    else:
-        return features[ids]
+    #print("Centroid:", xyz[:, 0, 32])
+    #print("Centroid:", xyz[:, 1, 32])
+    #print("Centroid:", xyz[:, 2, 32])
+    ids_x = torch.where(xyz[:, 0, :] == 0)
+    ids_y = torch.where(xyz[:, 1, :] == 0)
+    ids_z = torch.where(xyz[:, 2, :] == 0)
+    return features[ids_x]
 
 
 def cloud_sampling(xyz, Z, natoms, radius=None, include_self=True, mode='distance'):
@@ -42,7 +44,7 @@ def cloud_sampling(xyz, Z, natoms, radius=None, include_self=True, mode='distanc
 def cloud_mask(dists, natoms, include_self):
     dists_sorted = torch.argsort(dists, dim=1, descending=False)
     if not include_self:
-        natoms+=1
+        natoms += 1
     mask = dists_sorted[:, :natoms]
     if include_self:
         return mask
@@ -84,4 +86,3 @@ def inverse_coulomb_dist(xyz, Z):
 def electrostatic_dist(xyz, features):
     # q * q / r
     return None
-

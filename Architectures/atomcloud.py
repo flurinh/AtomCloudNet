@@ -48,9 +48,11 @@ class AtomResiduals(nn.Module):
 
     def forward(self, features):
         batch_size = features.shape[0]
-        transformed_ = features.permute(1, 0, 2)
+        features_ = features.permute(1, 0, 2)
+        transformed_ = features_
         for atom in range(features.shape[1]):
             input_ = transformed_[atom]
+            #print("Input shape", input_.shape)
             for i, res in enumerate(self.atom_res_blocks):
                 if batch_size == 1 or self.unnormalized:
                     input_ = F.relu(res(input_))
@@ -58,9 +60,11 @@ class AtomResiduals(nn.Module):
                     bn = self.atom_norm_blocks[i]
                     res_features = res(input_)
                     input_ = F.relu(bn(res_features))
+                #print("output", input_.shape)
+            transformed_[atom] = input_
 
-        new_features = torch.cat([features, transformed_], axis=1)
-        print(new_features.shape)
+        new_features = torch.cat([features_, transformed_], axis=2).permute(1, 0, 2)
+        #print(new_features.shape)
         return new_features
 
 
@@ -111,9 +115,9 @@ class AtomcloudVectorization(nn.Module):
             # print(masked_xyz.shape)
             # print(masked_features.shape)
             masked_features = torch.cat([masked_xyz, masked_features], axis=2)
-            print("Concatenated features:", masked_features.shape)
+            #print("Concatenated features:", masked_features.shape)
             masked_features = self.spatial_abstraction(masked_features)
-            print("Spatially abstracted features:", masked_features.shape)
+            #print("Spatially abstracted features:", masked_features.shape)
 
         # Use cloud's feature table as input to convolution, resulting in new features.
         # new_features = masked_features.permute(0, 2, 1)
@@ -128,12 +132,12 @@ class AtomcloudVectorization(nn.Module):
                 conv_features = conv(new_features)
                 new_features = F.relu(bn(conv_features))
         # Todo: Combining features
-        print("Convolution output shape:", new_features.shape)
+        #print("Convolution output shape:", new_features.shape)
         new_features = torch.max(new_features, 2)[0]
-        print("Collapsed output shape:", new_features.shape)
+        #print("Collapsed output shape:", new_features.shape)
         if self.retain_features:
             new_features = torch.cat([centroid[1], new_features], axis=1)
-        print("Final output shape:", new_features.shape)
+        #print("Final output shape:", new_features.shape)
         return new_features
 
 
@@ -161,19 +165,12 @@ class Atomcloud(nn.Module):
         new_features = torch.zeros((batch_size, natoms, self.out_features))
         if self.retain_features:
             new_features = torch.zeros((batch_size, natoms, self.out_features + self.nfeats))
-        print("features", features.shape)
-        print("new features will be", new_features.shape)
         Z = Z.view(-1, Z.shape[1], 1)
         # Todo: for each atom go through the entire model and generate new features
         # clouds is a list of masks for all atoms
         clouds, dists = cloud_sampling(xyz, Z=Z, natoms=self.natoms, radius=self.radius, mode=self.mode,
                                        include_self=self.include_self)
         for c, cloud in enumerate(clouds):
-            print()
-            print("======================================= ")
-            print()
-            print(c)
-            print()
             centroid = (xyz[:, c], features[:, c])
             # Shift coordinates of xyz to center cloud
             for b in range(batch_size):
