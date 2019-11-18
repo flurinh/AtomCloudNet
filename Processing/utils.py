@@ -30,11 +30,11 @@ def qm9_xyz(filepath):
             print(coords)
             print(prots)
             print(partial)
-            return namedtuple("XYZFile", ["coords", "atomtypes", "prots", "partial"]) \
-                (coords, atomtypes, prots, partial)
+            return namedtuple("XYZFile", ["natoms", "coords", "atomtypes", "prots", "partial"]) \
+                (natoms, coords, atomtypes, prots, partial)
         except:
-            return namedtuple("XYZFile", ["coords", "atomtypes", "prots", "partial"]) \
-                (None, None, None, None)
+            return namedtuple("XYZFile", ["natoms", "coords", "atomtypes", "prots", "partial"]) \
+                (None, None, None, None, None)
 
 
 

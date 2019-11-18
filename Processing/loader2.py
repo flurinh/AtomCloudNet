@@ -32,23 +32,15 @@ class qm9_loader(Dataset):
         print("Dataloader processing files... Trying to accumulate {} training points.".format(limit))
 
         # TODO: only add valid proteins
-        rt_range = []
-        salconc_range = []
         self.ph_list = []
-        ph_range = [4.5, 8]
         natom_range = [40, 150]
         for file_id, file in enumerate(tqdm(files)):
             if counter < limit:
                 data = qm9_xyz(file)
                 if data.title is not None:
                     data_ = data.title
-                    natoms = int(data_[0])
-                    ph = data_[1]
-                    T = data_[2]
-                    salconc = data_[3]
+                    natoms = int(data.natoms)
                     name = data_[4]
-                    n_shift = (float(data_[5]) - 100) / 50
-                    h_shift = (float(data_[6]) - 5) / 10
                     coords = data.coords
                     xyz = np.zeros((coords.shape[0], 3))
                     for i in range(coords.shape[0]):
@@ -61,13 +53,21 @@ class qm9_loader(Dataset):
                             if ph_range[0] <= float(ph) <= ph_range[1]:
                                 data_dict = {'name': name,
                                              'natoms': natoms,
-                                             'ph': float(ph),
-                                             'salconc': salconc,
-                                             'T': T,
-                                             'xyz': xyz,
-                                             'prots': data.prots,
-                                             '15N-shift': n_shift,
-                                             '1H-shift': h_shift}
+                                             'rotcon1' = rotcon1,
+                                             'rotcon2' = rotcon2,
+                                             'rotcon3' = rotcon3,
+                                             'dipolemom' = dipolemom,
+                                             'isotropicpol' = isotropicpol,
+                                             'homo' = homo,
+                                             'lumo' = lumo,
+                                             'gap' = gap,
+                                             'eclect' = eclect,
+                                             'zeropointvib' = zeropointvib,
+                                             'u0' = u0,
+                                             'Urt' = Urt,
+                                             'Hrt' = Hrt,
+                                             'Grt' = Grt,
+                                             'heatcap' = heatcap}
                                 self.data.update({str(counter): data_dict})
                                 counter += 1
             else:
