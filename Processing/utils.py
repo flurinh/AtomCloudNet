@@ -12,7 +12,7 @@ PATH = 'data/'
 def qm9_xyz(filepath):
     with open(filepath, 'r') as fin:
         try:
-            natoms = int(fin.readline().split(' ')[0])
+            natoms = int(fin.readline())
             coords = np.zeros([natoms, 3], dtype="float64")
             atomtypes = []
             prots = []
@@ -27,14 +27,14 @@ def qm9_xyz(filepath):
                 prots.append(int(
                     line[0].replace("N", "7").replace("C", "6").replace("H", "1").replace("F", "9").replace("O", "8")))
                 x[:] = list(map(float, line[1:4]))
-            print(coords)
-            print(prots)
-            print(partial)
-            return namedtuple("XYZFile", ["natoms", "coords", "atomtypes", "prots", "partial"]) \
-                (natoms, coords, atomtypes, prots, partial)
+            #print(coords)
+            #print(prots)
+            #print(partial)
+            return namedtuple("XYZFile", ["natoms", "properties", "coords", "atomtypes", "prots", "partial"]) \
+                (natoms, prop, coords, atomtypes, prots, partial)
         except:
-            return namedtuple("XYZFile", ["natoms", "coords", "atomtypes", "prots", "partial"]) \
-                (None, None, None, None, None)
+            return namedtuple("XYZFile", ["natoms", "props", "coords", "atomtypes", "prots", "partial"]) \
+                (None, None, None, None, None, None)
 
 
 

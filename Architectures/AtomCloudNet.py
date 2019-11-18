@@ -49,3 +49,42 @@ class AtomCloudNet(nn.Module):
         f = self.fc3(f)
         f = torch.sigmoid(f)
         return f
+
+
+class AtomCloudFeaturePropagation(nn.Module):
+    def __init__(self, layers = [512, 256]):
+        super(AtomCloudFeaturePropagation, self).__init__()
+
+        self.emb = AtomEmbedding(embedding_dim=128, transform=True)
+
+        self.cloud1 = Atomcloud(natoms=4, nfeats=128, radius=None, layers=[128, 256, 384], include_self=True,
+                                retain_features=False, mode='potential')
+
+        self.atom_res1 = AtomResiduals(in_channel=384, res_blocks=2)
+
+        self.cloud2 = Atomcloud(natoms=4, nfeats=768, radius=None, layers=[768, 768, 1024], include_self=True,
+                                retain_features=False, mode='potential')
+
+        self.atom_res2 = AtomResiduals(in_channel=1024, res_blocks=2)
+
+        self.cloud3 = Atomcloud(natoms=4, nfeats=2048, radius=None, layers=[1024, 128, 1], include_self=True,
+                                retain_features=False, mode='potential')
+
+    def forward(self, xyz, features):
+        #print(xyz.shape)
+        Z = features
+        #print("Z", Z)
+        batch_size, _, _ = xyz.size()
+        emb = self.emb(features)
+        #print("Embedding:", emb.shape)
+        f1 = self.cloud1(xyz, emb, Z)
+        #print("Cloudlevel 1:", f1.shape)
+        f1 = self.atom_res1(f1)
+        #print("Residual level 1:", f1.shape)
+        f2 = self.cloud2(xyz, f1, Z)
+        #print("Cloudlevel 2:", f2.shape)
+        f2 = self.atom_res2(f2)
+        #print("Residual level 2:", f2.shape)
+        f3 = self.cloud3(xyz, f2, Z).view(-1, f2.shape[1])
+        #print(f3.shape)
+        return f3

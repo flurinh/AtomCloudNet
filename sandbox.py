@@ -1,34 +1,26 @@
-from Architectures.point_util import *
-from Architectures.pointconv2 import *
-import os
-from Processing.loader import *
-import glob
+from Architectures.AtomCloudNet import *
+from Processing.loader2 import *
 from torch.utils.data import DataLoader
+from tqdm import tqdm, trange
 
-"""
-input = torch.randn((8, 3, 128))
-features = torch.randn((8, 3, 128))
-model = PointNet2ClsSsg()
-print(model)
-output = model(input, features)
-print(output)
-"""
-
-path = 'data/hist'
+path = 'data/QM9'
 
 
 
 batch_size = 1
-real_batch_size = 8
+real_batch_size = 4
 nepochs = 30
 
 feats = ['prot', 'ph']
 
-data = xyz_loader(feats=feats, limit=1280, path=path + '/*.xyz')
-
-data.plot_hist()
+data = qm9_loader(feats=feats, limit=2000, path=path + '/*.xyz')
+print(data.__len__())
 loader = DataLoader(data, batch_size=batch_size, shuffle=True)
-model = PointNet2ClsSsg(nfeats=len(feats)).double()
+
+
+
+model = AtomCloudFeaturePropagation().float()
+print(model)
 
 criterion = nn.MSELoss()
 opt = torch.optim.Adam(model.parameters(), lr=5e-5)
@@ -49,13 +41,18 @@ if multi_gpu is not None:
 else:
     model.to(device)
 
-
-for e in range(nepochs):
+torch.autograd.set_detect_anomaly(True)
+for e in trange(nepochs):
     for i, sample in enumerate(tqdm(loader), start = 1):
         xyz = sample[0].permute(0, 2, 1).to(device)
-        feat = sample[1].view(batch_size, -1, xyz.shape[2]).to(device)
+        feat = sample[1].view(batch_size, xyz.shape[2]).to(device)
         output = model(xyz, feat)
-        new_loss = criterion(output.float(), sample[2].float())
+        #print(output.shape)
+        new_loss = criterion(output, sample[2])
+        print(output)
+        print("loss:", new_loss.cpu().item())
+        #print(output.shape)
+        #print("target", sample[2].shape)
         # print(output.float(), sample[2].float())
         if i % real_batch_size == 1:
             loss = new_loss
@@ -65,6 +62,13 @@ for e in range(nepochs):
             loss = loss / real_batch_size
             loss.backward()
             opt.step()
-            print("loss:", torch.sqrt(loss).cpu().item() * 50)
+            print("======================================================================")
+            print()
+            print("output:", output)
+            print("target:", sample[2])
+            print("")
+            print("loss:", torch.sqrt(loss).cpu().item())
+            print()
+            print("======================================================================")
             opt.zero_grad()
     torch.save(model, 'model.pt')

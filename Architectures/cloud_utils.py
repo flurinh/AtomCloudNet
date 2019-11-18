@@ -75,11 +75,10 @@ def inverse_coulomb_dist(xyz, Z):
     :return:
     """
     batch_size, natoms, _ = xyz.shape
-    dist = -2 * torch.matmul(xyz, xyz.permute(0, 2, 1))
     dist = torch.sum(xyz ** 2, -1).view(batch_size, natoms, 1) + torch.sum(xyz ** 2, -1).view(batch_size, 1, natoms) - \
            2 * torch.matmul(xyz, xyz.permute(0, 2, 1))
-    dist = torch.pow(dist, 3)
-    qq = torch.matmul(Z, Z.permute(0, 2, 1))
+    dist = torch.pow(dist, 3).float()
+    qq = torch.matmul(Z, Z.permute(0, 2, 1)).float()
     return dist / qq
 
 
