@@ -63,6 +63,8 @@ class AtomcloudVectorization(nn.Module):
         super(AtomcloudVectorization, self).__init__()
         self.natoms = natoms
         self.mode = mode
+        self.apply_vec_transform = True
+        self.spatial_abstraction = nn.Linear(nfeats+3, nfeats)
         self.cloud_convs = nn.ModuleList()
         self.cloud_norms = nn.ModuleList()
         last_channel = nfeats
@@ -71,41 +73,48 @@ class AtomcloudVectorization(nn.Module):
             self.cloud_norms.append(nn.BatchNorm2d(out_channel))
             last_channel = out_channel
 
-    def forward(self, xyz, features, centroid, cloud, dists):
-        # Todo: Use cloud's feature table as input to convolution, resulting in new features.
+    def forward(self, xyz, features, centroid, cloud):
+        # Use a linear layer to learn spatial abstraction
+        features = torch.cat([xyz, features], axis=1)
+        features = self.spatial_abstraction(features)
 
-        # Todo: Run convolution over cloud representation - This could/should be kernelized!
-
+        # Use cloud's feature table as input to convolution, resulting in new features.
+        new_features = features
+        # Todo: Run convolution over cloud representation - This could/should be kernelized -> eg. Gaussian
         for i, conv in enumerate(self.cloud_convs):
-            bn = self.cloud_norms[i]
             if new_features.shape[0] == 1:
-                new_points = F.relu(conv(new_features))
+                new_features = F.relu(conv(new_features))
             else:
+                bn = self.cloud_norms[i]
                 new_features = F.relu(bn(conv(new_features)))
-
+        # Todo: Combining features
         new_features = torch.max(new_features, 2)[0]
         return new_features
 
 
 class Atomcloud(nn.Module):
-    def __init__(self, natoms, nfeats, radius=None, layers=[32, 64, 128], mode='distance'):
+    def __init__(self, natoms, nfeats, radius=None, layers=[32, 64, 128], mode='potential'):
         super(Atomcloud, self).__init__()
         self.natoms = natoms
         self.nfeats = nfeats
         self.radius = radius
+        self.mode = mode
+        self.Z = None
         self.cloud = AtomcloudVectorization(natoms=natoms, nfeats=nfeats, layers=layers, mode=mode)
 
-    def forward(self, xyz, features):
+    def forward(self, xyz, features, Z = None):
         xyz = xyz.permute(0, 2, 1)
+        print("xyz", xyz.shape)
+        Z = Z.view(-1, Z.shape[1], 1)
+        print("Z", Z.shape)
         if features is not None:
             features = features.permute(0, 2, 1)
         # Todo: for each atom go through the entire model and generate new features
         # clouds is a list of masks for all atoms
-        _ = cloud_sampling(xyz, features=self.nfeats, natoms=self.natoms, radius=self.radius, mode='distance')
-        for c, c_ in enumerate(_):
-            cloud, dists = c_
+        clouds, dists = cloud_sampling(xyz, Z=Z, natoms=self.natoms, radius=self.radius, mode=self.mode)
+        for c, cloud in enumerate(clouds):
             centroid = (xyz[c], features[c])
             # Shift coordinates of xyz to center cloud
             xyz_ = xyz - centroid[0]
-            features[c] = self.cloud(xyz_, features, centroid, clouds, dists)
+            features[c] = self.cloud(xyz_, features, centroid, cloud, dists)
         return xyz, features

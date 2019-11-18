@@ -11,7 +11,7 @@ path = 'data/hist'
 
 
 n_batches = 1000
-batch_size = 1
+batch_size = 2
 real_batch_size = 8
 nepochs = 30
 
@@ -25,11 +25,12 @@ posb1 = xyz[0]
 featb1 = features[0]
 print(featb1)
 
+
 A = AtomEmbedding(transform=True)
+B = Atomcloud(natoms=16, nfeats=32, radius=None, layers=[64, 128, 256], mode='potential')
 
 
-
-
-print(A)
+print(B)
 t = A(featb1)
 print(t.shape)
+t2 = B(posb1, t, featb1)
