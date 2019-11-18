@@ -9,6 +9,34 @@ from Bio.PDB import PDBParser
 PATH = 'data/'
 
 
+def qm9_xyz(filepath):
+    with open(filepath, 'r') as fin:
+        try:
+            natoms = int(fin.readline().split(' ')[0])
+            coords = np.zeros([natoms, 3], dtype="float64")
+            atomtypes = []
+            prots = []
+            prop = []
+            partial = []
+            properties = fin.readline().split()
+            prop.append(properties)
+            for x in coords:
+                line = fin.readline().split()
+                atomtypes.append(line[0])
+                partial.append(float(line[4]))
+                prots.append(int(
+                    line[0].replace("N", "7").replace("C", "6").replace("H", "1").replace("F", "9").replace("O", "8")))
+                x[:] = list(map(float, line[1:4]))
+            print(coords)
+            print(prots)
+            print(partial)
+            return namedtuple("XYZFile", ["coords", "atomtypes", "prots", "partial"]) \
+                (coords, atomtypes, prots, partial)
+        except:
+            return namedtuple("XYZFile", ["coords", "atomtypes", "prots", "partial"]) \
+                (None, None, None, None)
+
+
 def london_disp(z, r):
     zn = 7
     return (z * zn) / (r ** 6)
@@ -26,7 +54,8 @@ def load_xyz(filepath):
             for x in coords:
                 line = fin.readline().split()
                 atomtypes.append(line[0])
-                prots.append(int(line[0].replace("N", "7").replace("C", "6").replace("H", "1").replace("S", "16").replace("O", "8")))
+                prots.append(int(
+                    line[0].replace("N", "7").replace("C", "6").replace("H", "1").replace("S", "16").replace("O", "8")))
                 x[:] = list(map(float, line[1:4]))
 
             return namedtuple("XYZFile", ["coords", "title", "atomtypes", "prots"]) \
