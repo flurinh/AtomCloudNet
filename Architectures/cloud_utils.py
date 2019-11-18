@@ -5,7 +5,15 @@ from time import time
 import numpy as np
 
 
-def cloud_sampling(xyz, Z, natoms, radius=None, mode='distance'):
+def get_centroids(xyz, features=None):
+    ids = None
+    if features is None:
+        return ids
+    else:
+        return features[ids]
+
+
+def cloud_sampling(xyz, Z, natoms, radius=None, include_self=True, mode='distance'):
     """
     Return clouds for each atom with n atoms in them. The atoms are ranked according to distance or potential to each
     other and the then each cloud is assigned natoms.
@@ -16,7 +24,6 @@ def cloud_sampling(xyz, Z, natoms, radius=None, mode='distance'):
     :param mode: 'distance' or 'potential'
     :return: cloud, cloud_dists
     """
-    batch_size, tot_n_atoms, nfeatures = xyz.shape
     cloud_dists = None  # [B, N]  # distance vectors
     clouds = []  # [B, N, N]  # mask
 
@@ -28,13 +35,19 @@ def cloud_sampling(xyz, Z, natoms, radius=None, mode='distance'):
     # Todo: select the top natoms (closest)
     for a in range(xyz.shape[1]):
         # Todo: given the mode rank all atoms
-        clouds.append(query(xyz, dists, natoms))
+        clouds.append(cloud_mask(dists[:, a, :], natoms, include_self=include_self))
     return clouds, cloud_dists
 
 
-def query(xyz, features, natoms):
-    ids = None
-    return ids
+def cloud_mask(dists, natoms, include_self):
+    dists_sorted = torch.argsort(dists, dim=1, descending=False)
+    if not include_self:
+        natoms+=1
+    mask = dists_sorted[:, :natoms]
+    if include_self:
+        return mask
+    else:
+        return mask[:, 1:]
 
 
 def euclidean_dist(xyz):
