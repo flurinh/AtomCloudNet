@@ -22,8 +22,8 @@ protein and ligands, ...).
 - compared to feature-selection based models: Some of the very best descriptions of chemical space are very time-consuming 
 to obtain (DFT, coupled-cluster calculation). Our model could be trained to predict an approximation of such 
 features (as shown with similar approaches, e.g. Schnet, Schnorb) in a fraction of the time required to calculate them.
-This could open the path to real-time calculation of new highly informative descriptions of chemical space and give rise 
-to highly performant models by using those resultant features for the prediction of other properties.
+This could open the path to real-time calculation of highly informative descriptions of chemical space and give rise 
+to more performant models by using these resultant approximate features for the prediction of chemical properties.
 
 ## Challenge of AtomNet
 
