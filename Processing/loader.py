@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 
-from torch.autograd import Variabl
+from torch.autograd import Variable
 
 
 class xyz_loader(Dataset):

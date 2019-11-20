@@ -19,7 +19,7 @@ class qm9_loader(Dataset):
                  shuffle=True,
                  path='data/QM9/*.xyz'):
         self.data = {}
-        self.partial = False
+        self.partial = True
 
         files = glob.glob(pathname=path)
         if shuffle:
@@ -92,11 +92,5 @@ class qm9_loader(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        p = np.asarray(self.data[str(idx)]['prots'])
-        if self.partial:
-            feat = np.vstack((p.astype(float), np.full(p.shape, self.data[str(idx)]['partial'])))
-        else:
-            feat = p
-            print(p)
         return torch.Tensor(self.data[str(idx)]['xyz']), torch.LongTensor(feat), \
                torch.Tensor(self.data[str(idx)]['partial'])

@@ -14,7 +14,7 @@ nepochs = 30
 feats = ['prot', 'ph']
 
 data = qm9_loader(feats=feats, limit=2000, path=path + '/*.xyz')
-print(data.__len__())
+print("Total number of samples assembled:", data.__len__())
 loader = DataLoader(data, batch_size=batch_size, shuffle=True)
 
 
@@ -43,12 +43,12 @@ else:
 
 torch.autograd.set_detect_anomaly(True)
 for e in trange(nepochs):
-    for i, sample in enumerate(tqdm(loader), start = 1):
-        xyz = sample[0].permute(0, 2, 1).to(device)
-        feat = sample[1].view(batch_size, xyz.shape[2]).to(device)
-        output = model(xyz, feat)
+    for i, (xyz, Z, partial) in enumerate(tqdm(loader), start = 1):
+        xyz = xyz.permute(0, 2, 1).to(device)
+        feat = Z.view(batch_size, xyz.shape[2]).to(device)
+        prediction = model(xyz, feat)
         #print(output.shape)
-        new_loss = criterion(output, sample[2])
+        new_loss = criterion(prediction, partial)
         print(output)
         print("loss:", new_loss.cpu().item())
         #print(output.shape)
