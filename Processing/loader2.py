@@ -43,7 +43,8 @@ class qm9_loader(Dataset):
                         for j in range(coords.shape[1]):
                             xyz[i, j] = coords[i, j]
                     atoms = data.atomtypes
-                    prots = data.prots
+                    prots = np.asarray(list(map(float, data.prots[0])))
+                    prots_ids = np.asarray(list(map(float, data.prots[1])))
                     partial = np.asarray(list(map(float, data.partial)))
                     #print(partial)
                     properties = data.properties[0]
@@ -66,6 +67,7 @@ class qm9_loader(Dataset):
 
                     data_dict = {'natoms': natoms,
                                  'prots': prots,
+                                 'prots_ids' : prots_ids,
                                  'partial': partial,
                                  'xyz': coords,
                                  'rotcon1': rotcon1,
@@ -78,10 +80,10 @@ class qm9_loader(Dataset):
                                  'gap': gap,
                                  'elect_spa_ext': elect_spa_ext,
                                  'zeropointvib': zeropointvib,
-                                 'u0': u0,
-                                 'Urt': Urt,
-                                 'Hrt': Hrt,
-                                 'Grt': Grt,
+                                 'u0': u0, # Internal energy at 0K
+                                 'Urt': Urt, # Internal energy at 298.15K
+                                 'Hrt': Hrt, # Enthalpy at 298.15K
+                                 'Grt': Grt, # Free energy at 298.15K
                                  'heatcap': heatcap}
                     self.data.update({str(counter): data_dict})
                     counter += 1
@@ -92,5 +94,11 @@ class qm9_loader(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        return torch.Tensor(self.data[str(idx)]['xyz']), torch.LongTensor(feat), \
-               torch.Tensor(self.data[str(idx)]['partial'])
+        prots = self.data[str(idx)]['prots_ids']
+        if self.partial:
+            pass
+
+        return torch.Tensor(self.data[str(idx)]['xyz']), \
+               torch.LongTensor(prots), \
+               torch.Tensor(self.data[str(idx)]['partial']), \
+               torch.Tensor([self.data[str(idx)]['Grt']])

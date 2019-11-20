@@ -6,7 +6,7 @@ def create_emb_layer(num_embeddings, embedding_dim):
 
 
 class AtomEmbedding(nn.Module):
-    def __init__(self, num_embeddings=10, embedding_dim=64, transform=True, transformed_emb_dim=None):
+    def __init__(self, num_embeddings=5, embedding_dim=64, transform=True, transformed_emb_dim=None):
         super(AtomEmbedding, self).__init__()
         """
         Embedding of atoms. Consider Z as a class. Embedding size.
@@ -98,6 +98,7 @@ class AtomcloudVectorization(nn.Module):
         self.conv_features = False  # true if convolution filter dimension should be over features instead of atoms
         self.cloud_convs = nn.ModuleList()
         self.cloud_norms = nn.ModuleList()
+
         if self.conv_features:
             last_channel = nfeats
         else:
@@ -108,7 +109,6 @@ class AtomcloudVectorization(nn.Module):
             last_channel = out_channel
 
     def forward(self, xyz, features, centroid, cloud):
-        # Use a linear layer to learn spatial abstraction
         _, natoms, ncoords = xyz.size()
         _, _, nfeatures = features.size()
         batch_size, cloud_size = cloud.size()
@@ -124,11 +124,7 @@ class AtomcloudVectorization(nn.Module):
 
         if self.apply_vec_transform:
             masked_features = torch.cat([masked_xyz, masked_features], axis=2)
-            #print(masked_features.shape)
             masked_features = self.spatial_abstraction(masked_features)
-
-        # Use cloud's feature table as input to convolution, resulting in new features.
-        # new_features = masked_features.permute(0, 2, 1)
         new_features = masked_features
 
         # Todo: Run convolution over cloud representation - This could/should be kernelized -> eg. Gaussian
@@ -136,8 +132,8 @@ class AtomcloudVectorization(nn.Module):
             if batch_size == 1:
                 if self.activation is 'relu':
                     new_features = F.relu(conv(new_features))
-                elif self.activation  is 'tanh':
-                    new_features = F.relu(conv(new_features))
+                elif self.activation is 'tanh':
+                    new_features = F.tanh(conv(new_features))
             else:
                 bn = self.cloud_norms[i]
                 conv_features = conv(new_features)
@@ -146,18 +142,12 @@ class AtomcloudVectorization(nn.Module):
                 elif self.activation  is 'tanh':
                     new_features = F.tanh(bn(conv_features))
 
-        # Todo: Combining features
-        #print("Convolution output shape:", new_features.shape)
         new_features = torch.max(new_features, 2)[0]
-        #print("Collapsed output shape:", new_features.shape)
-        if self.retain_features:
-            new_features = torch.cat([centroid[1], new_features], axis=1)
-        #print("Final output shape:", new_features.shape)
         return new_features
 
 
 class Atomcloud(nn.Module):
-    def __init__(self, natoms, nfeats, radius=None, layers=[32, 64, 128], include_self=False, retain_features=False,
+    def __init__(self, natoms, nfeats, radius=None, layers=[32, 64, 128], include_self=True, retain_features=True,
                  mode='potential'):
         super(Atomcloud, self).__init__()
         self.natoms = natoms
@@ -176,12 +166,8 @@ class Atomcloud(nn.Module):
         xyz_ = xyz
         if features.shape[1] != xyz.shape[1]:
             features = features.permute(0, 2, 1)
-        #print("xyz cloud:", xyz.shape)
-        #print("features cloud:", features.shape)
         batch_size, natoms, nfeatures = features.size()
         new_features = torch.zeros((batch_size, natoms, self.out_features))
-        if self.retain_features:
-            new_features = torch.zeros((batch_size, natoms, self.out_features + self.nfeats))
         Z = Z.view(-1, Z.shape[1], 1)
         # Todo: for each atom go through the entire model and generate new features
         # clouds is a list of masks for all atoms
@@ -193,4 +179,11 @@ class Atomcloud(nn.Module):
             for b in range(batch_size):
                 xyz_[b] = xyz[b] - centroid[0][b]
             new_features[:, c] = self.cloud(xyz_, features, centroid, cloud)
-        return new_features
+
+        if self.retain_features:
+            print("features",features.shape)
+            print("new features",new_features.shape)
+            print("concatenate features", torch.cat([features, new_features], axis=2).shape)
+            return torch.cat([features, new_features], axis=2)
+        else:
+            return new_features
