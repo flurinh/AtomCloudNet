@@ -3,7 +3,7 @@ from Processing.loader2 import *
 from torch.utils.data import DataLoader
 from tqdm import tqdm, trange
 
-path = 'data/dsgdb9nsd.xyz'
+path = 'data/QM9'
 
 
 batch_size = 1
@@ -41,18 +41,20 @@ else:
     model.to(device)
 
 torch.autograd.set_detect_anomaly(True)
+
 for e in trange(nepochs):
-    for i, (xyz, Z, partial, grt) in enumerate(tqdm(loader), start=1):
+    for i, (xyz, Z, partial, urt) in enumerate(tqdm(loader), start=1):
         xyz = xyz.permute(0, 2, 1).to(device)
         feat = Z.view(batch_size, xyz.shape[2]).to(device)
         prediction = model(xyz, feat)
         # print(output.shape)
         # loss = criterion(prediction, partial)
         loss = torch.sum(torch.abs(prediction-partial)) / prediction.shape[0]
-        if i % 20 == 0:
+        loss = criterion(prediction, urt)
+        if i % 1 == 0:
             print(prediction)
-            print(partial)
-            print("loss:", loss.cpu().item())
+            print(urt)
+            print("loss:", torch.sqrt(loss).cpu().item() * 600)
         # print(output.shape)
         #print("target", sample[2].shape)
         # print(output.float(), sample[2].float())

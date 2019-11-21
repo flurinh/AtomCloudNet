@@ -101,4 +101,4 @@ class qm9_loader(Dataset):
         return torch.Tensor(self.data[str(idx)]['xyz']), \
                torch.LongTensor(prots), \
                torch.Tensor(self.data[str(idx)]['partial']), \
-               torch.Tensor([self.data[str(idx)]['Grt']])
+               torch.Tensor([self.data[str(idx)]['Urt'] / (-600)])

@@ -181,9 +181,11 @@ class Atomcloud(nn.Module):
             new_features[:, c] = self.cloud(xyz_, features, centroid, cloud)
 
         if self.retain_features:
+            """
             print("features",features.shape)
             print("new features",new_features.shape)
             print("concatenate features", torch.cat([features, new_features], axis=2).shape)
+            """
             return torch.cat([features, new_features], axis=2)
         else:
             return new_features

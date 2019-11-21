@@ -1,5 +1,6 @@
 from Architectures.atomcloud import *
 from Architectures.cloud_utils import *
+import torch.nn.functional as F
 
 
 class AtomCloudNet(nn.Module):
@@ -51,20 +52,32 @@ class AtomCloudNet(nn.Module):
         return f
 
 
+
+
+
+"""
+
+
+First define architecture of layers with atomcloud then call layers with forward
+
+
+"""
+
 class AtomCloudFeaturePropagation(nn.Module):
     def __init__(self, layers=[512, 256]):
         super(AtomCloudFeaturePropagation, self).__init__()
+        final_features = 128
 
-        self.emb = AtomEmbedding(embedding_dim=128, transform=True)
+        self.emb = AtomEmbedding(embedding_dim=128, transform=False)
 
-        self.cloud1 = Atomcloud(natoms=3, nfeats=128, radius=None, layers=[128, 256, 384], include_self=True,
+        self.cloud1 = Atomcloud(natoms=8, nfeats=128, radius=None, layers=[128, 256, 384], include_self=True,
                                 retain_features=True, mode='potential')
         # if retain_features is True input to the next layer is nfeats +
         # layers[-1] if False layers[-1]
 
         self.atom_res1 = AtomResiduals(in_channel=512, res_blocks=4)
 
-        self.cloud2 = Atomcloud(natoms=3, nfeats=1024, radius=None, layers=[1024, 128, 1], include_self=True,
+        self.cloud2 = Atomcloud(natoms=8, nfeats=1024, radius=None, layers=[1024, 512, final_features], include_self=True,
                                 retain_features=False, mode='potential')
         """
         self.atom_res2 = AtomResiduals(in_channel=1024, res_blocks=6)
@@ -73,14 +86,20 @@ class AtomCloudFeaturePropagation(nn.Module):
                                 retain_features=False, mode='potential')
         """
 
+        self.fl = nn.Linear(final_features, 1)
+        self.act = nn.Sigmoid()
+
+
+
     def forward(self, xyz, features):
         Z = features
         batch_size, _, _ = xyz.size()
         emb = self.emb(features)
         f = self.cloud1(xyz, emb, Z)
-        print("f cloud 1:", f.shape)
         f = self.atom_res1(f)
-        print(f.shape)
         f = self.cloud2(xyz, f, Z)
-        print(f.shape)
+        print(f[0,:3, :10])
+        f = F.adaptive_avg_pool2d(f, (1, f.shape[2]))
+        f = self.fl(f)
+        f = self.act(f)
         return f
