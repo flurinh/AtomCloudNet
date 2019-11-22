@@ -1,7 +1,6 @@
 import glob
 from tqdm import trange, tqdm
 import numpy as np
-import pandas as pd
 import random
 
 from Processing.utils import *
@@ -9,6 +8,9 @@ from Processing.utils import *
 import torch
 from torch.utils.data import Dataset
 from torch.autograd import Variable
+
+# lftp sftp://hidberf@login.leonhard.ethz.ch -e "mirror -v -R -P 16 ~/PycharmProjects/Protos/data /cluster/home/hidberf/Protos/data/QM9 ; exit"
+# bsub -W 4:00 -R "rusage[mem=8192, ngpus_excl_p=1]" python sandbox.py
 
 
 class qm9_loader(Dataset):

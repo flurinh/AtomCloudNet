@@ -22,7 +22,7 @@ class AtomEmbedding(nn.Module):
         self.transformed_emb = nn.Linear(embedding_dim, transformed_emb_dim)
 
     def forward(self, Z):
-        emb = self.emb_layer(torch.LongTensor(Z))
+        emb = self.emb_layer(Z)
         transformed_emb = self.transformed_emb(emb)
         if not self.transform:
             return emb
@@ -125,7 +125,7 @@ class AtomcloudVectorization(nn.Module):
         if self.apply_vec_transform:
             masked_features = torch.cat([masked_xyz, masked_features], axis=2)
             masked_features = self.spatial_abstraction(masked_features)
-        new_features = masked_features
+        new_features = masked_features.to('cuda')
 
         # Todo: Run convolution over cloud representation - This could/should be kernelized -> eg. Gaussian
         for i, conv in enumerate(self.cloud_convs):
@@ -165,20 +165,20 @@ class Atomcloud(nn.Module):
         xyz = xyz.permute(0, 2, 1)
         xyz_ = xyz
         if features.shape[1] != xyz.shape[1]:
-            features = features.permute(0, 2, 1)
+            features = features.permute(0, 2, 1).to('cuda')
         batch_size, natoms, nfeatures = features.size()
-        new_features = torch.zeros((batch_size, natoms, self.out_features))
+        new_features = torch.zeros((batch_size, natoms, self.out_features)).to('cuda')
         Z = Z.view(-1, Z.shape[1], 1)
         # Todo: for each atom go through the entire model and generate new features
         # clouds is a list of masks for all atoms
-        clouds, dists = cloud_sampling(xyz, Z=Z, natoms=self.natoms, radius=self.radius, mode=self.mode,
+        clouds, dists = cloud_sampling(xyz, Z=Z.float(), natoms=self.natoms, radius=self.radius, mode=self.mode,
                                        include_self=self.include_self)
         for c, cloud in enumerate(clouds):
             centroid = (xyz[:, c].float(), features[:, c].float())
             # Shift coordinates of xyz to center cloud
             for b in range(batch_size):
                 xyz_[b] = xyz[b] - centroid[0][b]
-            new_features[:, c] = self.cloud(xyz_, features, centroid, cloud)
+            new_features[:, c] = self.cloud(xyz_, features, centroid, cloud).to('cuda')
 
         if self.retain_features:
             """

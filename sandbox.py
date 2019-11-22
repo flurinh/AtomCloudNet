@@ -7,7 +7,7 @@ from tqdm import tqdm, trange
 
 
 path = 'data/QM9'
-batch_size = 64
+batch_size = 8
 real_batch_size = 1
 nepochs = 30
 
@@ -22,15 +22,14 @@ model = AtomCloudFeaturePropagation().float()
 print(model)
 
 criterion = nn.MSELoss()
-opt = torch.optim.Adam(model.parameters(), lr=5e-3)
+opt = torch.optim.Adam(model.parameters(), lr=5e-4)
 model.train()
 opt.zero_grad()
 model_parameters = filter(lambda p: p.requires_grad, model.parameters())
 params = sum([np.prod(p.size()) for p in model_parameters])
 print("Number trainable parameters:", params)
 
-device = torch.device(
-    "cuda") if torch.cuda.is_available() else torch.device("cpu")
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 print("Using device:", device)
 multi_gpu = None
 if multi_gpu is not None:
@@ -49,17 +48,16 @@ for e in trange(nepochs):
         feat = Z.view(xyz.shape[0], xyz.shape[2]).to(device)
         prediction = model(xyz, feat)
         # print(output.shape)
-        loss = criterion(prediction, partial)
+        # loss = criterion(prediction, partial)
         # loss = torch.sum(torch.abs(prediction-partial)) / prediction.shape[0]
-        loss = criterion(prediction, urt)
-        if i % 5 == 0:
-            print(prediction)
-            print(urt)
-            print("loss:", torch.sqrt(loss).cpu().item() * 600)
+        loss = criterion(prediction, urt.to(device))
+        print("prediction", prediction[:3])
+        print("target", urt[:3])
+        print("loss:", torch.sqrt(loss).cpu().item() * 600)
         # print(output.shape)
         # print("target", sample[2].shape)
         # print(output.float(), sample[2].float())
         opt.zero_grad()
         loss.backward()
         opt.step()
-    torch.save(model, 'model.pt')
+    torch.save(model, 'model2.pt')
