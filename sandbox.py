@@ -7,7 +7,7 @@ from tqdm import tqdm, trange
 
 
 path = 'data/QM9'
-batch_size = 4
+batch_size = 16
 real_batch_size = 1
 nepochs = 30
 
@@ -34,7 +34,7 @@ print("Number trainable parameters:", params)
 
 if torch.cuda.device_count() > 1:
     ngpus = torch.cuda.device_count()
-    print("Let's use" + ngpus + "GPUs!")
+    # print("Let's use" + str(ngpus) + "GPUs!")
     model = torch.nn.DataParallel(model)
 model.to(device)
 
@@ -53,7 +53,11 @@ for e in trange(nepochs):
         loss_ = torch.sqrt(loss).cpu().item() * 600
         tot_loss += loss_
         avg_loss = tot_loss / i
-        pbar.set_description("ngpus::{}  --------  epoch-avg-loss::{}  --------  loss::{}  --------  prediction::{}  --------  target::{}  "
+        pbar.set_description("ngpus::{}  "
+                             "--------  epoch-avg-loss::{}  "
+                             "--------  loss::{}  "
+                             "--------  prediction::{}  "
+                             "--------  target::{}  "
                              .format(ngpus, avg_loss, loss_, prediction[0], urt[0]))
         opt.zero_grad()
         loss.backward()
