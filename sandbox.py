@@ -12,7 +12,7 @@ nepochs = 30
 
 feats = ['prot', 'ph']
 
-data = qm9_loader(feats=feats, limit=20000, path=path + '/*.xyz')
+data = qm9_loader(feats=feats, limit=130000, path=path + '/*.xyz')
 print("Total number of samples assembled:", data.__len__())
 loader = DataLoader(data, batch_size=batch_size, shuffle=True)
 

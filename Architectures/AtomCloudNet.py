@@ -98,7 +98,7 @@ class AtomCloudFeaturePropagation(nn.Module):
         f = self.cloud1(xyz, emb, Z)
         f = self.atom_res1(f)
         f = self.cloud2(xyz, f, Z)
-        print(f[0,:3, :10])
+        print(f[0,:10, :10])
         f = F.adaptive_avg_pool2d(f, (1, f.shape[2]))
         f = self.fl(f)
         f = self.act(f)

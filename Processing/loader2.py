@@ -26,7 +26,6 @@ class qm9_loader(Dataset):
             random.shuffle(files)
         counter = 0
         print("Dataloader processing files... Trying to accumulate {} training points.".format(limit))
-        # TODO: only add valid proteins
 
         natom_range = [4, 30]
         max_len = natom_range[1]
@@ -39,13 +38,13 @@ class qm9_loader(Dataset):
                     natoms = data.natoms
                     coords = data.coords
                     xyz = np.zeros((coords.shape[0], 3))
-                    for i in range(coords.shape[0]):
+                    for i in range(coords.shape[0]): # TODO for i in range 29 max for padded xyzs
                         for j in range(coords.shape[1]):
                             xyz[i, j] = coords[i, j]
                     atoms = data.atomtypes
-                    prots = np.asarray(list(map(float, data.prots[0])))
+                    prots = np.asarray(list(map(float, data.prots[0]))) # TODO padding with zeros to 29 max / how to pad array
                     prots_ids = np.asarray(list(map(float, data.prots[1])))
-                    partial = np.asarray(list(map(float, data.partial)))
+                    partial = np.asarray(list(map(float, data.partial))) # TODO padding as well
                     #print(partial)
                     properties = data.properties[0]
                     #print(properties)
