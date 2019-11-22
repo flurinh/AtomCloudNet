@@ -69,7 +69,7 @@ class qm9_loader(Dataset):
                     elect_spa_ext = float(properties[10])
                     zeropointvib = float(properties[11])
                     u0 = float(properties[12])
-                    Urt = float(properties[13])
+                    Urt = float(properties[13]) / (-600)
                     Hrt = float(properties[14])
                     Grt = float(properties[15])
                     heatcap = float(properties[16])
@@ -112,4 +112,4 @@ class qm9_loader(Dataset):
                torch.LongTensor(Z), \
                torch.LongTensor(prots), \
                torch.Tensor(self.data[str(idx)]['partial']), \
-               torch.Tensor([self.data[str(idx)]['Grt']])
+               torch.Tensor([self.data[str(idx)]['Urt']])

@@ -4,20 +4,21 @@ import torch.nn.functional as F
 
 
 class AtomCloudNet(nn.Module):
-    def __init__(self, layers=[512, 256]):
+    def __init__(self, layers=[512, 256], device='cpu'):
+        self.device = device
         super(AtomCloudNet, self).__init__()
 
-        self.emb = AtomEmbedding(embedding_dim=128, transform=True)
+        self.emb = AtomEmbedding(embedding_dim=128, transform=True, device=self.device)
 
         self.cloud1 = Atomcloud(natoms=15, nfeats=128, radius=None, layers=[32, 48, 64], include_self=True,
-                                retain_features=False, mode='potential')
+                                retain_features=False, mode='potential', device=self.device)
 
         self.atom_res1 = AtomResiduals(in_channel=64, res_blocks=2)
 
         self.cloud2 = Atomcloud(natoms=15, nfeats=128, radius=None, layers=[128, 256, 512], include_self=True,
-                                retain_features=False, mode='potential')
+                                retain_features=False, mode='potential', device=self.device)
 
-        self.atom_res2 = AtomResiduals(in_channel=512, res_blocks=2)
+        self.atom_res2 = AtomResiduals(in_channel=512, res_blocks=2, device=self.device)
 
         self.fc1 = nn.Linear(1024, layers[0])
         self.bn1 = nn.BatchNorm1d(layers[0])
@@ -53,38 +54,23 @@ class AtomCloudNet(nn.Module):
 
 
 
-
-
-"""
-
-
-First define architecture of layers with atomcloud then call layers with forward
-
-
-"""
-
 class AtomCloudFeaturePropagation(nn.Module):
-    def __init__(self, layers=[512, 256]):
+    def __init__(self, layers=[512, 256], device='cpu'):
         super(AtomCloudFeaturePropagation, self).__init__()
+        self.device=device
         final_features = 128
 
-        self.emb = AtomEmbedding(embedding_dim=128, transform=False)
+        self.emb = AtomEmbedding(embedding_dim=128, transform=False, device=self.device)
 
         self.cloud1 = Atomcloud(natoms=4, nfeats=128, radius=None, layers=[128, 256, 512], include_self=True,
-                                retain_features=True, mode='potential')
+                                retain_features=True, mode='potential', device=self.device)
         # if retain_features is True input to the next layer is nfeats +
         # layers[-1] if False layers[-1]
 
-        self.atom_res1 = AtomResiduals(in_channel=640, res_blocks=4)
+        self.atom_res1 = AtomResiduals(in_channel=640, res_blocks=2, device=self.device)
 
-        self.cloud2 = Atomcloud(natoms=4, nfeats=1280, radius=None, layers=[1280, 512, final_features], include_self=True,
-                                retain_features=False, mode='potential')
-        """
-        self.atom_res2 = AtomResiduals(in_channel=1024, res_blocks=6)
-
-        self.cloud3 = Atomcloud(natoms=2, nfeats=2048, radius=None, layers=[2048, 512, 1], include_self=True,
-                                retain_features=False, mode='potential')
-        """
+        self.cloud2 = Atomcloud(natoms=4, nfeats=1280, radius=None, layers=[1280, 1280, final_features], include_self=True,
+                                retain_features=False, mode='potential', device=self.device)
 
         self.fl = nn.Linear(final_features, 1)
         self.act = nn.Sigmoid()
