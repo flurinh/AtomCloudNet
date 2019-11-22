@@ -8,7 +8,6 @@ from Processing.utils import *
 
 import torch
 from torch.utils.data import Dataset
-
 from torch.autograd import Variable
 
 
@@ -28,7 +27,7 @@ class qm9_loader(Dataset):
         print("Dataloader processing files... Trying to accumulate {} training points.".format(limit))
         # TODO: only add valid proteins
 
-        natom_range = [4, 30]
+        natom_range = [8, 30]
         max_len = natom_range[1]
         for file_id, file in enumerate(tqdm(files)):
             if counter < limit:
@@ -38,17 +37,25 @@ class qm9_loader(Dataset):
                 else:
                     natoms = data.natoms
                     coords = data.coords
-                    xyz = np.zeros((coords.shape[0], 3))
-                    for i in range(coords.shape[0]):
-                        for j in range(coords.shape[1]):
-                            xyz[i, j] = coords[i, j]
-                    atoms = data.atomtypes
                     prots = np.asarray(list(map(float, data.prots[0])))
                     prots_ids = np.asarray(list(map(float, data.prots[1])))
                     partial = np.asarray(list(map(float, data.partial)))
-                    #print(partial)
+
+                    #
+                    xyz = np.random.rand(natom_range[1], 3)
+                    Z = np.zeros((natom_range[1], 1))
+                    padded_partial = np.zeros((natom_range[1], 1))
+                    padded_prot_ids = np.zeros((natom_range[1], 1))
+                    for i in range(xyz.shape[0]):
+                        if coords.shape[0] > i:
+                            Z[i] = prots[i]
+                            padded_partial[i] = partial[i]
+                            padded_prot_ids[i] = prots_ids[i]
+                            for j in range(3):
+                                xyz[i, j] = coords[i, j]
+
+                    atoms = data.atomtypes
                     properties = data.properties[0]
-                    #print(properties)
                     rotcon1 = float(properties[2])
                     rotcon2 = float(properties[3])
                     rotcon3 = float(properties[4])
@@ -66,10 +73,10 @@ class qm9_loader(Dataset):
                     heatcap = float(properties[16])
 
                     data_dict = {'natoms': natoms,
-                                 'prots': prots,
-                                 'prots_ids' : prots_ids,
-                                 'partial': partial,
-                                 'xyz': coords,
+                                 'Z': Z,
+                                 'prots_ids' : padded_prot_ids,
+                                 'partial': padded_partial,
+                                 'xyz': xyz,
                                  'rotcon1': rotcon1,
                                  'rotcon2': rotcon2,
                                  'rotcon3': rotcon3,
@@ -95,10 +102,12 @@ class qm9_loader(Dataset):
 
     def __getitem__(self, idx):
         prots = self.data[str(idx)]['prots_ids']
+        Z = self.data[str(idx)]['Z']
         if self.partial:
             pass
 
         return torch.Tensor(self.data[str(idx)]['xyz']), \
+               torch.LongTensor(Z), \
                torch.LongTensor(prots), \
                torch.Tensor(self.data[str(idx)]['partial']), \
-               torch.Tensor([self.data[str(idx)]['Urt'] / (-600)])
+               torch.Tensor([self.data[str(idx)]['Grt']])

@@ -6,7 +6,7 @@ def create_emb_layer(num_embeddings, embedding_dim):
 
 
 class AtomEmbedding(nn.Module):
-    def __init__(self, num_embeddings=5, embedding_dim=64, transform=True, transformed_emb_dim=None):
+    def __init__(self, num_embeddings=16, embedding_dim=64, transform=True, transformed_emb_dim=None):
         super(AtomEmbedding, self).__init__()
         """
         Embedding of atoms. Consider Z as a class. Embedding size.
