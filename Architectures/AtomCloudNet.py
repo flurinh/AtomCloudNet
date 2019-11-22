@@ -13,7 +13,7 @@ class AtomCloudNet(nn.Module):
         self.cloud1 = Atomcloud(natoms=15, nfeats=128, radius=None, layers=[32, 48, 64], include_self=True,
                                 retain_features=False, mode='potential', device=self.device)
 
-        self.atom_res1 = AtomResiduals(in_channel=64, res_blocks=2)
+        self.atom_res1 = AtomResiduals(in_channel=64, res_blocks=2, device=self.device)
 
         self.cloud2 = Atomcloud(natoms=15, nfeats=128, radius=None, layers=[128, 256, 512], include_self=True,
                                 retain_features=False, mode='potential', device=self.device)
@@ -66,16 +66,11 @@ class AtomCloudFeaturePropagation(nn.Module):
                                 retain_features=True, mode='potential', device=self.device)
         # if retain_features is True input to the next layer is nfeats +
         # layers[-1] if False layers[-1]
-
         self.atom_res1 = AtomResiduals(in_channel=640, res_blocks=2, device=self.device)
-
-        self.cloud2 = Atomcloud(natoms=4, nfeats=1280, radius=None, layers=[1280, 1280, final_features], include_self=True,
-                                retain_features=False, mode='potential', device=self.device)
-
+        self.cloud2 = Atomcloud(natoms=4, nfeats=1280, radius=None, layers=[1280, 1280, final_features],
+                                include_self=True, retain_features=False, mode='potential', device=self.device)
         self.fl = nn.Linear(final_features, 1)
         self.act = nn.Sigmoid()
-
-
 
     def forward(self, xyz, features):
         Z = features

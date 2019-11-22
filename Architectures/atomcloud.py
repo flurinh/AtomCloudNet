@@ -57,18 +57,18 @@ class AtomResiduals(nn.Module):
             input_ = transformed_[atom].clone()
             #print("Input shape", input_.shape)
             for i, res in enumerate(self.atom_res_blocks):
+                res_features = res(input_)
                 if batch_size == 1 or self.unnormalized:
                     if self.activation is 'relu':
-                        input_ = F.relu(res(input_))
+                        input_ = F.relu(res_features)
                     elif self.activation is 'tanh':
-                        input_ = torch.tanh(res(input_))
+                        input_ = torch.tanh(res_features)
                 else:
                     bn = self.atom_norm_blocks[i]
-                    res_features = res(input_)
                     if self.activation is 'relu':
                         input_ = F.relu(bn(res_features))
                     elif self.activation is 'tanh':
-                        input_ = torch.tanh(bn(res(input_)))
+                        input_ = torch.tanh(bn(res_features))
             transformed_[atom] = input_
 
         new_features = torch.cat([features_, transformed_], axis=2).permute(1, 0, 2)
@@ -132,19 +132,18 @@ class AtomcloudVectorization(nn.Module):
 
         # Todo: Run convolution over cloud representation - This could/should be kernelized -> eg. Gaussian
         for i, conv in enumerate(self.cloud_convs):
+            conv_features = conv(new_features)
             if batch_size == 1:
                 if self.activation is 'relu':
-                    new_features = F.relu(conv(new_features)).to(self.device)
+                    new_features = F.relu(conv_features)
                 elif self.activation is 'tanh':
-                    new_features = torch.tanh(conv(new_features)).to(self.device)
+                    new_features = torch.tanh(conv_features)
             else:
                 bn = self.cloud_norms[i]
-                conv_features = conv(new_features)
                 if self.activation is 'relu':
-                    new_features = F.relu(bn(conv_features)).to(self.device)
-                elif self.activation  is 'tanh':
-                    new_features = torch.tanh(bn(conv_features)).to(self.device)
-
+                    new_features = F.relu(bn(conv_features))
+                elif self.activation is 'tanh':
+                    new_features = torch.tanh(bn(conv_features))
         new_features = torch.max(new_features, 2)[0]
         return new_features
 
@@ -163,7 +162,7 @@ class Atomcloud(nn.Module):
         self.mode = mode
         self.Z = None
         self.cloud = AtomcloudVectorization(natoms=natoms, nfeats=nfeats, layers=layers,
-                                            retain_features=retain_features, mode=mode)
+                                            retain_features=retain_features, mode=mode, device=self.device)
 
     def forward(self, xyz, features, Z=None):
         xyz = xyz.permute(0, 2, 1)

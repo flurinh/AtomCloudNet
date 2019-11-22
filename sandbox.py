@@ -7,18 +7,21 @@ from tqdm import tqdm, trange
 
 
 path = 'data/QM9'
-batch_size = 1
+batch_size = 4
 real_batch_size = 1
 nepochs = 30
 
 feats = ['prot', 'ph']
 
-data = qm9_loader(feats=feats, limit=240, path=path + '/*.xyz')
+data = qm9_loader(feats=feats, limit=24000, path=path + '/*.xyz')
 print("Total number of samples assembled:", data.__len__())
 loader = DataLoader(data, batch_size=batch_size, shuffle=True)
 
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+print("Using device:", device)
 
-model = AtomCloudFeaturePropagation().float()
+
+model = AtomCloudFeaturePropagation(device=device).float()
 print(model)
 
 criterion = nn.MSELoss()
@@ -29,16 +32,11 @@ model_parameters = filter(lambda p: p.requires_grad, model.parameters())
 params = sum([np.prod(p.size()) for p in model_parameters])
 print("Number trainable parameters:", params)
 
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-print("Using device:", device)
-multi_gpu = None
-if multi_gpu is not None:
-    device_ids = [int(x) for x in multi_gpu.split(',')]
-    torch.backends.cudnn.benchmark = True
-    model.cuda(device_ids[0])
-    model = torch.nn.DataParallel(model, device_ids=device_ids)
-else:
-    model.to(device)
+if torch.cuda.device_count() > 1:
+    ngpus = torch.cuda.device_count()
+    print("Let's use" + ngpus + "GPUs!")
+    model = torch.nn.DataParallel(model)
+model.to(device)
 
 torch.autograd.set_detect_anomaly(True)
 pbar = tqdm(loader)
@@ -55,8 +53,8 @@ for e in trange(nepochs):
         loss_ = torch.sqrt(loss).cpu().item() * 600
         tot_loss += loss_
         avg_loss = tot_loss / i
-        pbar.set_description("epoch-avg-loss::{} --------  loss::{}  --------  prediction::{}  --------  target::{}  "
-                             .format(avg_loss, loss_, prediction[0], urt[0]))
+        pbar.set_description("ngpus::{}  --------  epoch-avg-loss::{}  --------  loss::{}  --------  prediction::{}  --------  target::{}  "
+                             .format(ngpus, avg_loss, loss_, prediction[0], urt[0]))
         opt.zero_grad()
         loss.backward()
         opt.step()

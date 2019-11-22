@@ -9,8 +9,9 @@ import torch
 from torch.utils.data import Dataset
 from torch.autograd import Variable
 
-# lftp sftp://hidberf@login.leonhard.ethz.ch -e "mirror -v -R -P 16 ~/PycharmProjects/Protos/data /cluster/home/hidberf/Protos/data/QM9 ; exit"
-# bsub -W 4:00 -R "rusage[mem=8192, ngpus_excl_p=1]" python sandbox.py
+
+# lftp sftp://hidberf@login.leonhard.ethz.ch -e "mirror -v -R -P 16 ~/PycharmProjects/Protos/data/QM9 /cluster/home/hidberf/Protos/data/QM9 ; exit"
+# bsub -W 24:00 -R "rusage[mem=8192, ngpus_excl_p=1]" python sandbox.py
 
 
 class qm9_loader(Dataset):
@@ -76,7 +77,7 @@ class qm9_loader(Dataset):
 
                     data_dict = {'natoms': natoms,
                                  'Z': Z,
-                                 'prots_ids' : padded_prot_ids,
+                                 'prots_ids': padded_prot_ids,
                                  'partial': padded_partial,
                                  'xyz': xyz,
                                  'rotcon1': rotcon1,
@@ -89,10 +90,10 @@ class qm9_loader(Dataset):
                                  'gap': gap,
                                  'elect_spa_ext': elect_spa_ext,
                                  'zeropointvib': zeropointvib,
-                                 'u0': u0, # Internal energy at 0K
-                                 'Urt': Urt, # Internal energy at 298.15K
-                                 'Hrt': Hrt, # Enthalpy at 298.15K
-                                 'Grt': Grt, # Free energy at 298.15K
+                                 'u0': u0,  # Internal energy at 0K
+                                 'Urt': Urt,  # Internal energy at 298.15K
+                                 'Hrt': Hrt,  # Enthalpy at 298.15K
+                                 'Grt': Grt,  # Free energy at 298.15K
                                  'heatcap': heatcap}
                     self.data.update({str(counter): data_dict})
                     counter += 1
@@ -113,3 +114,4 @@ class qm9_loader(Dataset):
                torch.LongTensor(prots), \
                torch.Tensor(self.data[str(idx)]['partial']), \
                torch.Tensor([self.data[str(idx)]['Urt']])
+
