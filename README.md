@@ -35,3 +35,11 @@ The most difficult task is "How to combine the neighborhoods atoms features in a
 AtomCloudNet takes neighbors features, stacks them and applies a convolution layer (similar to PointNet++).
 However given the high relevance of spatial directions in modelling relations in AtomClouds we consider the implementation of
 kernels in 3D space to provide easy access to modelling the chemical space.
+
+## Reading Material:
+
+http://proceedings.mlr.press/v54/xie17a/xie17a-supp.pdf
+https://arxiv.org/pdf/1711.08920.pdf
+https://medium.com/@samramasinghe/spherical-convolution-a-theoretical-walk-through-98e98ee64655
+https://arxiv.org/pdf/1801.10130.pdf
+https://github.com/jonas-koehler/s2cnn

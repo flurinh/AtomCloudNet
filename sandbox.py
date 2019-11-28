@@ -7,13 +7,14 @@ from tqdm import tqdm, trange
 
 
 path = 'data/QM9'
-batch_size = 16
+batch_size = 2
 real_batch_size = 1
 nepochs = 30
+ngpus = 0
 
 feats = ['prot', 'ph']
 
-data = qm9_loader(feats=feats, limit=24000, path=path + '/*.xyz')
+data = qm9_loader(feats=feats, limit=240, path=path + '/*.xyz')
 print("Total number of samples assembled:", data.__len__())
 loader = DataLoader(data, batch_size=batch_size, shuffle=True)
 

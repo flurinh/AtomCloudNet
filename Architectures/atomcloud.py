@@ -55,7 +55,7 @@ class AtomResiduals(nn.Module):
         transformed_ = features_
         for atom in range(features.shape[1]):
             input_ = transformed_[atom].clone()
-            #print("Input shape", input_.shape)
+            # print("Input shape of a batch of atoms", input_.shape)
             for i, res in enumerate(self.atom_res_blocks):
                 res_features = res(input_)
                 if batch_size == 1 or self.unnormalized:
