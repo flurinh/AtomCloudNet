@@ -21,6 +21,7 @@ def check_hist(name):
 class Protos:
     def __init__(self,
                  radius,
+                 limit,
                  download=False,
                  preprocess=True,
                  analysis=False):
@@ -29,7 +30,7 @@ class Protos:
         if download:
             download_proteins()
 
-        limit = np.inf
+        limit = limit
         if preprocess:
             print("preprocessing")
             pathname = PATH + 'raw/*_pdb.txt'
@@ -45,6 +46,7 @@ class Protos:
             print("Starting to preprocess {} proteins...".format(len(filenames)))
 
             id_list = list(name[9:13] for name in filenames)
+            #id_list = ['2L7B', '2L7Q']
 
             if not os.path.isdir(PATH + 'hist'):
                 os.mkdir(PATH + 'hist')
@@ -64,12 +66,12 @@ class Protos:
                         make_dist_vector(xyz, types, res, i, radius=radius)
 
             print("Cleaning txt files...")
-            clean_XYZ(mode='CV')
-            clean_XYZ(mode='CV')
+            #clean_XYZ(mode='CV')
+            #clean_XYZ(mode='CV')
             get_all_stupid_atoms()
-            get_all_stupid_atoms(mode='CV')
-            get_nucleusNumber()
-            get_cv()
+            #get_all_stupid_atoms(mode='CV')
+            #get_nucleusNumber()
+            #get_cv()
 
             hist_files = glob.glob(PATH + 'hist/*.txt')
             print("Casting to xyz format...")
@@ -91,7 +93,7 @@ class Protos:
                     get_shift(path=PATH + 'raw/', name=i)
 
             mv_Res_without_Shift()
-            mv_Res_without_Shift(mode='CV')
+            #mv_Res_without_Shift(mode='CV')
 
             clean_XYZ()
             clean_XYZ()
@@ -99,7 +101,7 @@ class Protos:
             print("Finalizing XYZ file...")
             for i in tqdm(id_list):
                 addlineto_xyz(i)
-                addlineto_xyz(i, mode='CV')
+                #addlineto_xyz(i, mode='CV')
 
         if analysis:
             xyz = xyz_loader(limit=limit)
@@ -113,7 +115,8 @@ class Protos:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Specify run (respective .ini file holds all tunable hyperparameters.')
     parser.add_argument('--radius', type=int, default=6, help='Please specify radius.')
+    parser.add_argument('--limit', type=int, default=10000, help='Please specify radius.')
     # parser.add_argument('--run', type=int, help='Please specify run ID.')
     # parser.add_argument('--verbose', type=int, default=0, help='Please specify verbose.')
     args = parser.parse_args()
-    p = Protos(radius=args.radius)
+    p = Protos(radius=args.radius, limit=args.limit)
