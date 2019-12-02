@@ -11,7 +11,7 @@ from torch.autograd import Variable
 
 
 # lftp sftp://hidberf@login.leonhard.ethz.ch -e "mirror -v -R -P 16 ~/PycharmProjects/Protos/data/QM9 /cluster/home/hidberf/Protos/data/QM9 ; exit"
-# bsub -W 24:00 -R "rusage[mem=8192, ngpus_excl_p=1]" python sandbox.py
+# bsub -W 24:00 -R "rusage[mem=8192, ngpus_excl_p=4]" python sandbox.py
 
 
 class qm9_loader(Dataset):

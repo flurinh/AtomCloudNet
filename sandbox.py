@@ -7,14 +7,14 @@ from tqdm import tqdm, trange
 
 
 path = 'data/QM9'
-batch_size = 2
+batch_size = 8
 real_batch_size = 1
 nepochs = 30
 ngpus = 0
 
 feats = ['prot', 'ph']
 
-data = qm9_loader(feats=feats, limit=240, path=path + '/*.xyz')
+data = qm9_loader(feats=feats, limit=24000, path=path + '/*.xyz')
 print("Total number of samples assembled:", data.__len__())
 loader = DataLoader(data, batch_size=batch_size, shuffle=True)
 
@@ -35,8 +35,9 @@ print("Number trainable parameters:", params)
 
 if torch.cuda.device_count() > 1:
     ngpus = torch.cuda.device_count()
-    # print("Let's use" + str(ngpus) + "GPUs!")
+    print("Let's use" + str(ngpus) + "GPUs!")
     model = torch.nn.DataParallel(model)
+
 model.to(device)
 
 torch.autograd.set_detect_anomaly(True)
@@ -59,7 +60,7 @@ for e in trange(nepochs):
                              "--------  loss::{}  "
                              "--------  prediction::{}  "
                              "--------  target::{}  "
-                             .format(ngpus, avg_loss, loss_, prediction[0], urt[0]))
+                             .format(ngpus, avg_loss, loss_, prediction[0].cpu().detach().numpy(), urt[0].cpu().detach().numpy()))
         opt.zero_grad()
         loss.backward()
         opt.step()
