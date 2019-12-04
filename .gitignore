@@ -3,6 +3,12 @@ data.zip
 test.py
 data2
 hist
+qm9_data
+cache
+
 env.yml
 environment.yml
 architect.py
+spherical.py
+spherical_ex.py
+utils.py

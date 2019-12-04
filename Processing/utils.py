@@ -393,13 +393,11 @@ def get_pH(name, path=PATH):
             b = a[-1]
             # print("pH:", b)
 
-    for line in stringlist:
         if "(KELVIN)" in line:
             c = line.split()
             d = c[-1]
             # print("Kelvin:", d)
 
-    for line in stringlist:
         if "IONIC STRENGTH " in line:
             e = line.split()
             f = e[-1]
