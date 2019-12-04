@@ -11,4 +11,8 @@ environment.yml
 architect.py
 spherical.py
 spherical_ex.py
+ops_ex.py
+gravity_ex.py
+build_model_ex.py
+symmetry_ex.py
 utils.py
