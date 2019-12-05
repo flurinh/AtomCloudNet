@@ -10,7 +10,7 @@ from se3cnn.point.kernel import Kernel
 from se3cnn.point.radial import CosineBasisModel
 from se3cnn.non_linearities import rescaled_act
 
-import matplotlib.pyplot as plt
+
 
 from spherical import SphericalTensor
 
@@ -33,30 +33,9 @@ N, _ = square.shape
 
 markersize = 15
 
-def plot_task(ax, start, finish, title, marker=None):
-    ax.plot(torch.cat([finish[:, 0], finish[:, 0]]),
-            torch.cat([finish[:, 1], finish[:, 1]]), 'o-', markersize=markersize)
-    ax.plot(torch.cat([start[:, 0], start[:, 0]]),
-            torch.cat([start[:, 1], start[:, 1]]), 'o-',
-            markersize=markersize + 5 if marker else markersize,
-            marker=marker if marker else 'o')
-    for i in range(N):
-        ax.arrow(start[i, 0], start[i, 1],
-                 finish[i, 0] - start[i, 0],
-                 finish[i, 1] - start[i, 1],
-                 length_includes_head=True, head_width=0.05, facecolor="black", zorder=100)
-
-    ax.set_title(title)
-    ax.set_axis_off()
-
-fig, axes = plt.subplots(1, 3, figsize=(15, 6))
-plot_task(axes[0], rectangle, square, "Task 1: Rectangle to Square")
-plot_task(axes[1], square, rectangle, "Task 2: Square to Rectangle")
-plot_task(axes[2], square, rectangle, "Task 3: Square to Rectangle with Symmetry Breaking", "$\u2B2E$")
-
 
 class Network(torch.nn.Module):
-    def __init__(self, Rs, n_layers=3, sh=SO3.spherical_harmonics_xyz, max_radius=3.0, number_of_basis=3, radial_layers=3):
+    def __init__(self, Rs, n_layers=3, sh=SO3.spherical_harmonics_xyz, max_radius=.5, number_of_basis=3, radial_layers=3):
         super().__init__()
         self.Rs = Rs
         self.n_layers = n_layers
@@ -70,13 +49,16 @@ class Network(torch.nn.Module):
         RadialModel = partial(CosineBasisModel, max_radius=max_radius,
                               number_of_basis=number_of_basis, h=100,
                               L=radial_layers, act=sp)
+        print(RadialModel)
 
         K = partial(Kernel, RadialModel=RadialModel, sh=sh)
+        print(K)
         C = partial(Convolution, K)
+        print(C)
 
         self.layers = torch.nn.ModuleList([
             GatedBlock(Rs, Rs, sp, rescaled_act.sigmoid, C)
-            for i in range(n_layers - 1)
+            for _ in range(n_layers - 1)
         ])
 
         self.layers.append(
@@ -87,16 +69,21 @@ class Network(torch.nn.Module):
         output = input
         # print(geometry.shape) # 1, 4, 3
         batch, N, _ = geometry.shape
+        # why do i divide by 2?
         for layer in self.layers:
             output = layer(output.div(N ** 0.5), geometry)
+            print(output.shape)
         return output
 
 
-L_max = 5
-Rs = [(1, L) for L in range(L_max + 1)]
+L_max = 3
+multiplicity = 1
+Rs = [(multiplicity, L) for L in range(L_max + 1)]
 print(Rs)
 
 model = Network(Rs)
+print(model)
+
 
 params = model.parameters()
 optimizer = torch.optim.Adam(params, 1e-3)
@@ -113,9 +100,6 @@ N, _ = displacements.shape
 projections = torch.stack([SphericalTensor.from_geometry(displacements[i], L_max).signal for i in range(N)])
 
 
-print(rectangle)
-print(rectangle.unsqueeze(0))
-print(model)
 
 iterations = 100
 for i in range(iterations):
@@ -128,24 +112,8 @@ for i in range(iterations):
     optimizer.step()
 
 
-def plot_output(start, finish, output, start_label, finish_label):
-    rows, cols = 1, 1
-    specs = [[{'is_3d': True} for i in range(cols)]
-             for j in range(rows)]
-    fig = make_subplots(rows=rows, cols=cols, specs=specs)
-    fig.add_trace(go.Scatter3d(x=start[:, 0], y=start[:, 1], z=start[:, 2], mode="markers", name=start_label))
-    fig.add_trace(go.Scatter3d(x=finish[:, 0], y=finish[:, 1], z=finish[:, 2], mode="markers", name=finish_label))
-    for i in range(N):
-        trace = SphericalTensor(output[0][i].detach(), Rs).plot(center=start[i])
-        trace.showscale = False
-        fig.add_trace(trace, 1, 1)
-    return fig
-
 
 output = model(z, rectangle.unsqueeze(0))
-fig = plot_output(rectangle, square, output, "Rectangle", "Square")
-fig.update_layout(scene_aspectmode='data')
-fig.show()
 
 
 angles = torch.rand(3) * torch.tensor([np.pi, 2 * np.pi, np.pi])
@@ -153,9 +121,8 @@ rot = SO3.rot(*angles)
 rot_rectangle = torch.einsum('xy,jy->jx', (rot, rectangle))
 rot_square = torch.einsum('xy,jy->jx', (rot, square))
 output = model(z, rot_rectangle.unsqueeze(0))
-fig = plot_output(rot_rectangle, rot_square, output, "Rectangle", "Square")
-fig.update_layout(scene_aspectmode='data')
-fig.show()
+
+
 
 
 
@@ -191,16 +158,8 @@ for i in range(iterations):
     optimizer.step()
 
 
-
-
-
-
-
-
 # Fix
-
 model = Network(Rs)
-
 params = model.parameters()
 optimizer = torch.optim.Adam(params, 1e-3)
 loss_fn = torch.nn.MSELoss()
@@ -228,12 +187,6 @@ for i in range(iterations):
     optimizer.step()
 
 
-fig = plot_output(square, rectangle, output, "Square", "Rectangle")
-fig.update_layout(scene_aspectmode='data')
-fig.show()
-
-
-
 rows, cols = 1, 1
 specs = [[{'is_3d': True} for i in range(cols)]
          for j in range(rows)]
@@ -250,7 +203,3 @@ signal[0] = 1
 signal[8] = -0.1
 
 sphten = SphericalTensor(signal, Rs)
-
-trace = sphten.plot(relu=False, n=60)
-fig.add_trace(trace, row=1, col=1)
-fig.show()

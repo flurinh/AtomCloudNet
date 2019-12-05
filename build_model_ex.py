@@ -1,5 +1,23 @@
 import torch
 import se3cnn
+import math
+import matplotlib.pyplot as plt
+
+import se3cnn.point
+import se3cnn.point.radial
+from functools import partial
+from se3cnn import SO3
+from se3cnn.non_linearities import rescaled_act
+
+import numpy as np
+
+import se3cnn.point.kernel
+import se3cnn.point.operations
+
+
+import se3cnn.non_linearities as nl
+from se3cnn.non_linearities import rescaled_act
+
 torch.set_default_dtype(torch.float64)
 
 
@@ -29,44 +47,39 @@ C_input = torch.tensor([[0., 1.] for i in range(C_geo.shape[-2])])
 H_input = torch.tensor([[1., 0.] for i in range(H_geo.shape[-2])])
 input = torch.cat([C_input, H_input])
 
+print(geometry.shape)
+print(input.shape)
 # Inside se3cnn.point.radial.CosineBasisModel
-import math
-import matplotlib.pyplot as plt
 
-max_radius = 3.0
+max_radius = 1
 number_of_basis = 3
 radii = torch.linspace(0, max_radius, steps=number_of_basis)
 step = radii[1] - radii[0]
 basis = lambda x: x.div(step).add(1).relu().sub(2).neg().relu().add(1).mul(math.pi / 2).cos().pow(2)
 
 x = torch.linspace(-max_radius, max_radius, 1000)
-plt.plot(x, basis(x))
-
+# plt.plot(x, basis(x))
+# plt.show()
 
 # se3cnn has operations for point sets and for 3D images. We will be using points.
-import se3cnn.point
-import se3cnn.point.radial
-from functools import partial
-from se3cnn.non_linearities import rescaled_act
-
 # We are going to define RadialModel by specifying every single argument
 # of CosineBasisModel EXCEPT out_dim which will be passed later
 radial_layers = 2
 sp = rescaled_act.Softplus(beta=5)
-RadialModel = partial(se3cnn.point.radial.CosineBasisModel, max_radius=max_radius,
-                      number_of_basis=number_of_basis, h=100,
-                      L=radial_layers, act=sp)
+RadialModel = partial(se3cnn.point.radial.CosineBasisModel,
+                      max_radius=max_radius,
+                      number_of_basis=number_of_basis,
+                      h=100,
+                      L=radial_layers,
+                      act=sp)
 
 
 
-import se3cnn.point.kernel
 
-sh = None
+sh = SO3.spherical_harmonics_xyz
 K = partial(se3cnn.point.kernel.Kernel, RadialModel=RadialModel, sh=sh)
 
 
-
-import se3cnn.point.operations
 
 # If we wish to pass the convolution to a layer definition
 C = partial(se3cnn.point.operations.Convolution, K)
@@ -74,12 +87,9 @@ C = partial(se3cnn.point.operations.Convolution, K)
 # Or alternatively, if we want to use the convolution directly,
 # we need to specify the `Rs` of the input and output
 Rs_in = [(2, 0)]
-Rs_out = [(4, 0), (4, 1), (4, 2)]
+Rs_out = [(4, 0), (4, 1), (4, 2), (4, 3)]
 convolution = se3cnn.point.operations.Convolution(K, Rs_in, Rs_out)
 
-
-import se3cnn.non_linearities as nl
-from se3cnn.non_linearities import rescaled_act
 
 gated_block = nl.gated_block.GatedBlock(Rs_in, Rs_out, sp, rescaled_act.sigmoid, C)
 
@@ -89,3 +99,51 @@ norm_activation = nl.norm_activation.NormActivation(dimensionalities, rescaled_a
 print(K)
 print(C)
 print(gated_block)
+
+model_parameters = filter(lambda p: p.requires_grad, convolution.parameters())
+params = sum([np.prod(p.size()) for p in model_parameters])
+print("Number of parameters in conv:", params)
+conv_out = convolution(input.unsqueeze(0), geometry.unsqueeze(0))
+print(conv_out.shape)
+
+
+
+
+
+"""
+class Network(torch.nn.Module):
+    def __init__(self, Rs, n_layers=3, sh=SO3.spherical_harmonics_xyz, max_radius=3.0, number_of_basis=3, radial_layers=3):
+        super().__init__()
+        self.Rs = Rs
+        self.n_layers = n_layers
+        self.L_max = max(L for m, L in Rs)
+
+        sp = rescaled_act.Softplus(beta=5)
+
+        Rs_geo = [(1, l) for l in range(self.L_max + 1)]
+        Rs_centers = [(1, 0), (1, 1)]
+
+        RadialModel = partial(CosineBasisModel, max_radius=max_radius,
+                              number_of_basis=number_of_basis, h=100,
+                              L=radial_layers, act=sp)
+
+        K = partial(Kernel, RadialModel=RadialModel, sh=sh)
+        C = partial(Convolution, K)
+
+        self.layers = torch.nn.ModuleList([
+            GatedBlock(Rs, Rs, sp, rescaled_act.sigmoid, C)
+            for i in range(n_layers - 1)
+        ])
+
+        self.layers.append(
+            Convolution(K, Rs, Rs)
+        )
+
+    def forward(self, input, geometry):
+        output = input
+        # print(geometry.shape) # 1, 4, 3
+        batch, N, _ = geometry.shape
+        for layer in self.layers:
+            output = layer(output.div(N ** 0.5), geometry)
+        return output
+"""
