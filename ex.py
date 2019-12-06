@@ -1,190 +1,22 @@
+
 import torch
-from functools import partial
 import numpy as np
-
-import se3cnn
 import se3cnn.SO3 as SO3
-from se3cnn.point.operations import Convolution
-from se3cnn.non_linearities import GatedBlock
-from se3cnn.point.kernel import Kernel
-from se3cnn.point.radial import CosineBasisModel
-from se3cnn.non_linearities import rescaled_act
-
-
-
-from spherical import SphericalTensor
-
-
+from spherical import SphericalTensor # a small Signal class written for ease of handling Spherical Tensors
 import plotly
 from plotly.subplots import make_subplots
-import plotly.graph_objects as go
 
-torch.set_default_dtype(torch.float64)
+import json
+from functools import partial
 
-square = torch.tensor(
-    [[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]
-)
-square -= square.mean(-2)
-sx, sy = 0.5, 1.5
-rectangle = square * torch.tensor([sx, sy, 0.])
-rectangle -= rectangle.mean(-2)
+import torch
+import random
+from se3cnn.non_linearities import GatedBlock
+from se3cnn.non_linearities.rescaled_act import relu, sigmoid
+from se3cnn.point.kernel import Kernel
+from se3cnn.point.operations import PeriodicConvolution
+from se3cnn.point.radial import CosineBasisModel
 
-N, _ = square.shape
-
-markersize = 15
-
-
-class Network(torch.nn.Module):
-    def __init__(self, Rs, n_layers=3, sh=SO3.spherical_harmonics_xyz, max_radius=.5, number_of_basis=3, radial_layers=3):
-        super().__init__()
-        self.Rs = Rs
-        self.n_layers = n_layers
-        self.L_max = max(L for m, L in Rs)
-
-        sp = rescaled_act.Softplus(beta=5)
-
-        Rs_geo = [(1, l) for l in range(self.L_max + 1)]
-        Rs_centers = [(1, 0), (1, 1)]
-
-        RadialModel = partial(CosineBasisModel, max_radius=max_radius,
-                              number_of_basis=number_of_basis, h=100,
-                              L=radial_layers, act=sp)
-        print(RadialModel)
-
-        K = partial(Kernel, RadialModel=RadialModel, sh=sh)
-        print(K)
-        C = partial(Convolution, K)
-        print(C)
-
-        self.layers = torch.nn.ModuleList([
-            GatedBlock(Rs, Rs, sp, rescaled_act.sigmoid, C)
-            for _ in range(n_layers - 1)
-        ])
-
-        self.layers.append(
-            Convolution(K, Rs, Rs)
-        )
-
-    def forward(self, input, geometry):
-        output = input
-        # print(geometry.shape) # 1, 4, 3
-        batch, N, _ = geometry.shape
-        # why do i divide by 2?
-        for layer in self.layers:
-            output = layer(output.div(N ** 0.5), geometry)
-            print(output.shape)
-        return output
-
-
-L_max = 3
-multiplicity = 1
-Rs = [(multiplicity, L) for L in range(L_max + 1)]
-print(Rs)
-
-model = Network(Rs)
-print(model)
-
-
-params = model.parameters()
-optimizer = torch.optim.Adam(params, 1e-3)
-loss_fn = torch.nn.MSELoss()
-
-
-
-z = torch.zeros(1, N, sum(2 * L + 1 for L in range(L_max + 1)))
-z[:, :, 0] = 1.  # batch, point, channel
-print("Input shape:", z.shape)
-
-displacements = square - rectangle
-N, _ = displacements.shape
-projections = torch.stack([SphericalTensor.from_geometry(displacements[i], L_max).signal for i in range(N)])
-
-
-
-iterations = 100
-for i in range(iterations):
-    output = model(z, rectangle.unsqueeze(0))
-    loss = loss_fn(output, projections.unsqueeze(0))
-    if i % 10 == 0:
-        print(loss)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-
-
-
-output = model(z, rectangle.unsqueeze(0))
-
-
-angles = torch.rand(3) * torch.tensor([np.pi, 2 * np.pi, np.pi])
-rot = SO3.rot(*angles)
-rot_rectangle = torch.einsum('xy,jy->jx', (rot, rectangle))
-rot_square = torch.einsum('xy,jy->jx', (rot, square))
-output = model(z, rot_rectangle.unsqueeze(0))
-
-
-
-
-
-model = Network(Rs)
-
-params = model.parameters()
-optimizer = torch.optim.Adam(params, 1e-3)
-loss_fn = torch.nn.MSELoss()
-
-
-
-
-input = torch.zeros(1, N, sum(2 * L + 1 for L in range(L_max + 1)))
-input[:, :, 0] = 1.  # batch, point, channel
-
-
-
-displacements = rectangle - square
-N, _ = displacements.shape
-projections = torch.stack([SphericalTensor.from_geometry(displacements[i], L_max).signal for i in range(N)])
-
-
-
-
-iterations = 100
-for i in range(iterations):
-    output = model(input, square.unsqueeze(0))
-    loss = loss_fn(output, projections.unsqueeze(0))
-    if i % 10 == 0:
-        print(loss)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-
-
-# Fix
-model = Network(Rs)
-params = model.parameters()
-optimizer = torch.optim.Adam(params, 1e-3)
-loss_fn = torch.nn.MSELoss()
-
-
-
-input = torch.zeros(1, N, sum(2 * L + 1 for L in range(L_max + 1)))
-input[:, :, 0] = 1.  # batch, point, channel
-# Breaking x and y symmetry with x^2 - y^2 component
-input[:, :, 8] = 0.1  # x^2 - y^2
-
-displacements = rectangle - square
-N, _ = displacements.shape
-projections = torch.stack([SphericalTensor.from_geometry(displacements[i], L_max).signal for i in range(N)])
-
-
-iterations = 100
-for i in range(iterations):
-    output = model(input, square.unsqueeze(0))
-    loss = loss_fn(output, projections.unsqueeze(0))
-    if i % 10 == 0:
-        print(loss)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
 
 
 rows, cols = 1, 1
@@ -192,14 +24,74 @@ specs = [[{'is_3d': True} for i in range(cols)]
          for j in range(rows)]
 fig = make_subplots(rows=rows, cols=cols, specs=specs)
 
-L_max = 5
+L_max = 8
+
+tetra_coords = torch.tensor( # The easiest way to construct a tetrahedron is using opposite corners of a box
+    [[.5, .5, .5], [0,1,0], [1.5, 1.5, 1.5]]
+)
+
+
+
 Rs = [(1, L) for L in range(L_max + 1)]
 sum_Ls = sum(2 * L + 1 for mult, L in Rs)
 
 # Random spherical tensor up to L_Max
-signal = torch.zeros(sum_Ls)
-signal[0] = 1
-# Breaking x and y symmetry with x^2 - y^2
-signal[8] = -0.1
+rand_sph_tensor = torch.randn(sum_Ls)
 
-sphten = SphericalTensor(signal, Rs)
+sphten = SphericalTensor(rand_sph_tensor, Rs)
+
+
+tetra_coords -= tetra_coords.mean(-2)
+
+fig = make_subplots(rows=rows, cols=cols, specs=specs)
+
+sphten = SphericalTensor.from_geometry(tetra_coords, L_max)
+print(sphten.signal)
+trace = sphten.plot(relu=False, n=60)
+fig.add_trace(trace, row=1, col=1)
+fig.show()
+
+
+
+class AvgSpacial(torch.nn.Module):
+    def forward(self, features):
+        return features.mean(1)
+
+
+class Network(torch.nn.Module):
+    def __init__(self, num_classes, L = 2):
+        super().__init__()
+
+        representations = [(1,), (4, 4, 4, 4), (4, 4, 4, 4), (4, 4, 4, 4), (64,)]
+        representations = [[(mul, l) for l, mul in enumerate(rs)] for rs in representations]
+        print(representations)
+        R = partial(CosineBasisModel, max_radius=2, number_of_basis=10, h=100, L=L, act=relu)
+        K = partial(Kernel, RadialModel=R)
+        C = partial(PeriodicConvolution, Kernel=K, max_radius=2)
+
+        self.firstlayers = torch.nn.ModuleList([
+            GatedBlock(Rs_in, Rs_out, relu, sigmoid, C)
+            for Rs_in, Rs_out in zip(representations, representations[1:])
+        ])
+        self.lastlayers = torch.nn.Sequential(AvgSpacial(), torch.nn.Linear(64, num_classes))
+
+    def forward(self, structure):
+        num_neighbors = 4
+        N = num_neighbors
+        p = next(self.parameters())
+        geometry = torch.stack([p.new_tensor(s.coords) for s in structure.sites])
+        features = p.new_ones(1, len(geometry), 1)
+        geometry = geometry.unsqueeze(0)
+
+        for i, m in enumerate(self.firstlayers):
+            assert torch.isfinite(features).all(), i
+            features = m(features.div(N ** 0.5), geometry, structure.lattice)
+
+        return self.lastlayers(features).squeeze(0)
+
+model = Network(5)
+print(model)
+
+model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+params = sum([np.prod(p.size()) for p in model_parameters])
+print(params)
