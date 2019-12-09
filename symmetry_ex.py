@@ -143,6 +143,15 @@ def plot_output(start, finish, output, start_label, finish_label):
 
 
 output = model(z, rectangle.unsqueeze(0))
+print("")
+print("")
+print("")
+print("")
+print("")
+print(rectangle.shape)
+print(square.shape)
+print(output.shape)
+
 fig = plot_output(rectangle, square, output, "Rectangle", "Square")
 fig.update_layout(scene_aspectmode='data')
 fig.show()
