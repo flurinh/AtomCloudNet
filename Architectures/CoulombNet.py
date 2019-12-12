@@ -3,6 +3,9 @@ import torch.nn as nn
 
 
 class CoulombNet(nn.Module):
+    """
+    Simple feedforward architecture neural network. Baseline module.
+    """
     def __init__(self, in_shape, layers=[1024, 512, 256]):
         super(CoulombNet, self).__init__()
         self.coul_blocks = nn.ModuleList()

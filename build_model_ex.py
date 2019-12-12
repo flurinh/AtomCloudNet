@@ -95,7 +95,7 @@ C = partial(se3cnn.point.operations.Convolution, K)
 Rs_in = [(2, 0)]
 Rs_out = [(4, 0), (4, 1), (4, 2), (4, 3)]
 convolution = se3cnn.point.operations.Convolution(K, Rs_in, Rs_out)
-neighborconv = se3cnn.point.operations.NeighborsConvolution(K, Rs_in, Rs_out, radius=1.8)
+neighborconv = se3cnn.point.operations.NeighborsConvolution(K, Rs_in, Rs_out, radius=1.4)
 print(neighborconv.radius)
 
 
