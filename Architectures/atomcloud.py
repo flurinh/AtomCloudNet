@@ -72,7 +72,6 @@ class AtomResiduals(nn.Module):
             transformed_[atom] = input_
 
         new_features = torch.cat([features_, transformed_], axis=2).permute(1, 0, 2)
-        #print(new_features.shape)
         return new_features
 
 

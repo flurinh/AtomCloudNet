@@ -1,14 +1,71 @@
 from Architectures.atomcloud import *
 from Architectures.cloud_utils import *
+
+import se3cnn
+from se3cnn import SO3
+from se3cnn.point.radial import CosineBasisModel
+import se3cnn.non_linearities as nl
+from se3cnn.non_linearities import rescaled_act
+from se3cnn.point.kernel import Kernel
+from se3cnn.point.operations import Convolution, NeighborsConvolution
+
 import torch.nn.functional as F
+import torch.nn as nn
+
+from functools import partial
+
+
+class se3AtomCloudNet(nn.Module):
+    def __init__(self, device='cpu'):
+        super(se3AtomCloudNet, self).__init__()
+        # Define all the necessary stats of the network
+        self.device = device
+        self.emb_dim = 16
+        self.list_Rs = [[(self.emb_dim, 0)], [(self.emb_dim, 0), (self.emb_dim, 1), (self.emb_dim, 2), (self.emb_dim, 3)]]
+        self.list_Rs2 = [(512, 0)]
+        self.list_Rs3 = [(16, 0), (16, 1), (16, 2), (16, 3)]
+        self.cloud_dim = 256
+        self.radial_layers = 2
+        self.sp = rescaled_act.Softplus(beta=5)
+        self.max_radius = 1
+        self.number_of_basis = 3
+        self.RadialModel = partial(CosineBasisModel,
+                                   max_radius=self.max_radius,
+                                   number_of_basis=self.number_of_basis,
+                                   h=100,
+                                   L=self.radial_layers,
+                                   act=self.sp)
+        self.sh = SO3.spherical_harmonics_xyz
+        self.K = partial(se3cnn.point.kernel.Kernel, RadialModel=self.RadialModel, sh=self.sh)
+        self.neighbor_radius = 1.4
+
+        # Network layers
+        self.emb = nn.Embedding(num_embeddings=2, embedding_dim=self.emb_dim)
+        self.cloud1 = NeighborsConvolution(self.K, self.list_Rs[0], self.list_Rs[1], self.neighbor_radius)
+        self.atom_res1 = AtomResiduals(in_channel=self.cloud_dim, res_blocks=4, device=self.device)
+        self.molecule_collation = Convolution(self.K, self.list_Rs2, self.list_Rs2)
+
+    def forward(self, features, xyz):
+        assert xyz.size()[:2] == features.size()[:2], "xyz ({}) and feature size ({}) should match"\
+            .format(xyz.size(), features.size())
+        print("0", features.size())
+        features = self.emb(features)
+        print("1", features.size())
+        features = self.cloud1(features, xyz)
+        print("2", features.size())
+        features = self.atom_res1(features)
+        print("3", features.size())
+        collation = self.molecule_collation(features, xyz)
+        print("4", collation.size())
+        return features, collation
 
 
 class AtomCloudNet(nn.Module):
     def __init__(self, layers=[512, 256], device='cpu'):
-        self.device = device
         super(AtomCloudNet, self).__init__()
+        self.device = device
 
-        self.emb = AtomEmbedding(embedding_dim=128, transform=True, device=self.device)
+        self.emb = AtomEmbedding(embedding_dim=self.emb_dim, transform=True, device=self.device)
 
         self.cloud1 = Atomcloud(natoms=15, nfeats=128, radius=None, layers=[32, 48, 64], include_self=True,
                                 retain_features=False, mode='potential', device=self.device)
@@ -53,11 +110,10 @@ class AtomCloudNet(nn.Module):
         return f
 
 
-
 class AtomCloudFeaturePropagation(nn.Module):
     def __init__(self, layers=[512, 256], device='cpu'):
         super(AtomCloudFeaturePropagation, self).__init__()
-        self.device=device
+        self.device = device
         final_features = 128
 
         self.emb = AtomEmbedding(embedding_dim=128, transform=False, device=self.device)

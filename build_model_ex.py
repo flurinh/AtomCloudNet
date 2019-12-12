@@ -19,10 +19,8 @@ import se3cnn.non_linearities as nl
 from se3cnn.non_linearities import rescaled_act
 
 from spherical import *
+from Architectures.AtomCloudNet import *
 
-import plotly
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
 
 torch.set_default_dtype(torch.float64)
 
@@ -110,20 +108,6 @@ params = sum([np.prod(p.size()) for p in model_parameters])
 print("Number of parameters in conv:", params)
 transformed = neighborconv(input.unsqueeze(0), geometry.unsqueeze(0))
 
-
-def plot_neighborhood(geometry, features, rs, label):
-    N, _ = geometry.shape
-    rows, cols = 1, 1
-    specs = [[{'is_3d': True} for i in range(cols)]
-             for j in range(rows)]
-    fig = make_subplots(rows=rows, cols=cols, specs=specs)
-    fig.add_trace(go.Scatter3d(x=geometry[:, 0], y=geometry[:, 1], z=geometry[:, 2], mode="markers", name=label))
-    for i in range(N):
-        sph_ten_input = features[0][i].detach()
-        trace = SphericalTensor(sph_ten_input, rs).plot(center=geometry[i])
-        trace.showscale = False
-        fig.add_trace(trace, 1, 1)
-    return fig
 
 print("geometry:", geometry.shape)
 print("input:", input.shape)
