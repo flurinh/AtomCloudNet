@@ -14,49 +14,71 @@ from functools import partial
 
 
 class se3AtomCloudNet(nn.Module):
-    def __init__(self, device='cpu'):
+    def __init__(self, device='cpu', nclouds = 1, natoms = 30):
         super(se3AtomCloudNet, self).__init__()
         # Define all the necessary stats of the network
         self.device = device
-        self.emb_dim = 16
-        self.list_Rs = [[(self.emb_dim, 0)], [(self.emb_dim, 0), (self.emb_dim, 1), (self.emb_dim, 2), (self.emb_dim, 3)]]
-        self.list_Rs2 = [(512, 0)]
-        self.list_Rs3 = [(16, 0), (16, 1), (16, 2), (16, 3)]
-        self.cloud_dim = 256
+        self.natoms = natoms
+
+        self.emb_dim = 32
+
+        self.nclouds = nclouds
+        self.cloud_order = 5
+        self.cloud_dim = 128
+
         self.radial_layers = 2
         self.sp = rescaled_act.Softplus(beta=5)
+        self.sh = SO3.spherical_harmonics_xyz
+
+        # Radial Model
         self.max_radius = 1
         self.number_of_basis = 3
+        self.neighbor_radius = 1.8
         self.RadialModel = partial(CosineBasisModel,
                                    max_radius=self.max_radius,
                                    number_of_basis=self.number_of_basis,
                                    h=100,
                                    L=self.radial_layers,
                                    act=self.sp)
-        self.sh = SO3.spherical_harmonics_xyz
         self.K = partial(se3cnn.point.kernel.Kernel, RadialModel=self.RadialModel, sh=self.sh)
-        self.neighbor_radius = 1.4
 
         # Network layers
-        self.emb = nn.Embedding(num_embeddings=2, embedding_dim=self.emb_dim)
-        self.cloud1 = NeighborsConvolution(self.K, self.list_Rs[0], self.list_Rs[1], self.neighbor_radius)
-        self.atom_res1 = AtomResiduals(in_channel=self.cloud_dim, res_blocks=4, device=self.device)
-        self.molecule_collation = Convolution(self.K, self.list_Rs2, self.list_Rs2)
+        self.emb = nn.Embedding(num_embeddings=16, embedding_dim=self.emb_dim)
+
+        cloud_dim = self.emb_dim
+        self.clouds = nn.ModuleList()
+        dim_in = self.emb_dim
+        dim_out = self.cloud_dim
+        for c in range(self.nclouds):
+            Rs_in = [(dim_in, o) for o in range(1)]
+            Rs_out = [(dim_out, o) for o in range(self.cloud_order)]
+            print("Rs_in", Rs_in)
+            print("Rs_out", Rs_out)
+            self.clouds.append(NeighborsConvolution(self.K, Rs_in, Rs_out, self.neighbor_radius))
+            cloud_out = self.cloud_dim * (self.cloud_order**2)
+            self.clouds.append(AtomResiduals(in_channel=cloud_out, res_blocks=1, device=self.device))
+            res_out = 2 * cloud_out
+            dim_in = res_out
+
+        # molecular collation
+        self.collate = nn.Linear(self.natoms, 1)
+        self.collate2 = nn.Linear(res_out, 1)
+        self.act = nn.Sigmoid()
 
     def forward(self, xyz, features):
-        assert xyz.size()[:2] == features.size()[:2], "xyz ({}) and feature size ({}) should match"\
+        assert xyz.size()[:1] == features.size()[:1], "xyz ({}) and feature size ({}) should match"\
             .format(xyz.size(), features.size())
-        print("0", features.squeeze().size())
+        #print("0", features.size())
         features = self.emb(features)
-        print("1", features.size())
-        features = self.cloud1(features, xyz)
-        print("2", features.size())
-        features = self.atom_res1(features)
-        print("3", features.size())
-        collation = self.molecule_collation(features, xyz)
-        print("4", collation.size())
-        return features, collation
-
+        #print("1", features.size())
+        for i, op in enumerate(self.clouds):
+            features = op(features, geometry=xyz)
+            #print(str(i+2), str(features.size()))
+        features = features.permute(0, 2, 1)
+        features = self.collate(features)
+        features = features.squeeze()
+        output = self.act(self.collate2(features))
+        return output
 
 class AtomCloudNet(nn.Module):
     def __init__(self, layers=[512, 256], device='cpu'):

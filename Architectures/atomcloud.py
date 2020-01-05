@@ -49,7 +49,7 @@ class AtomResiduals(nn.Module):
             self.atom_res_blocks.append(nn.Linear(in_channel, in_channel))
             self.atom_norm_blocks.append(nn.BatchNorm1d(in_channel))
 
-    def forward(self, features):
+    def forward(self, features, geometry=None):
         batch_size = features.shape[0]
         features_ = features.permute(1, 0, 2)
         transformed_ = features_
