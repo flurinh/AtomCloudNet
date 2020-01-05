@@ -48,7 +48,7 @@ fig = plot_neighborhood(xyz, feat_plot, Rs_in, "Input")
 fig.update_layout(scene_aspectmode='data')
 fig.show()
 
-transformed = new_features[:,:, :256]
+transformed = new_features[:, :, :256]
 print(transformed.size())
 fig = plot_neighborhood(xyz, transformed, Rs_out, "Transformed")
 fig.update_layout(scene_aspectmode='data')

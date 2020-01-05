@@ -3,6 +3,7 @@ from Architectures.AtomCloudNet import *
 from Architectures.cloud_utils import *
 import os
 from Processing.loader import *
+from Processing.loader2 import *
 import glob
 from torch.utils.data import DataLoader
 from tqdm import trange, tqdm
@@ -21,13 +22,14 @@ feats = ['prot', 'ph']
 xyz = torch.randn((n_batches, batch_size, 3, 96))
 features = torch.randint(1, 8, (n_batches, batch_size, 96))
 
-feats = ['prot', 'ph']
 
-data = xyz_loader(feats=feats, limit=1280, path=path + '/*.xyz')
-data.plot_hist()
+#  data = xyz_loader(feats=feats, limit=1280, path=path + '/*.xyz')
+data = qm9_loader(feats=feats, limit=128, path='data/QM9/*.xyz')
+# data.plot_hist()
 loader = DataLoader(data, batch_size=batch_size, shuffle=True)
 
-model = AtomCloudNet()
+
+model = se3AtomCloudNet()
 criterion = nn.MSELoss()
 opt = torch.optim.Adam(model.parameters(), lr=5e-4)
 model.train()
@@ -51,12 +53,12 @@ else:
 
 
 for e in trange(nepochs):
-    for i, sample in enumerate(tqdm(loader), start = 1):
-        xyz = sample[0].to(device)
-        features = sample[1].to(device)
-        target = sample[2].to(device).float()
+    for i, (xyz, Z, prots, partial, urt) in enumerate(tqdm(loader), start=1):
+        xyz = xyz.to(device)
+        features = Z.to(device)
+        target = prots.to(device).float()
         output = model(xyz, features)
-        loss = criterion(output.float(), sample[2].float())
+        loss = criterion(output.float(), target.float())
         opt.zero_grad()
         loss.backward()
         opt.step()
