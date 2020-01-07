@@ -6,8 +6,11 @@ from se3cnn import SO3
 from se3cnn.point.radial import CosineBasisModel
 import se3cnn.non_linearities as nl
 from se3cnn.non_linearities import rescaled_act
+from se3cnn.non_linearities.rescaled_act import relu, sigmoid
 from se3cnn.point.kernel import Kernel
+from se3cnn.non_linearities import GatedBlock
 from se3cnn.point.operations import Convolution, NeighborsConvolution
+from se3cnn.point.operations import PeriodicConvolution
 import torch.nn.functional as F
 import torch.nn as nn
 from functools import partial
@@ -21,47 +24,65 @@ class se3AtomCloudNet(nn.Module):
         self.natoms = natoms
 
         self.emb_dim = 32
-
         self.residuals = True
         self.resblocks = 1
-
         self.cloudnorm = True
+        self.feature_collation = 'avg' # pool or else use dense layer
 
+        # Cloud specifications
         self.nclouds = nclouds
         self.cloud_order = 3
-        self.cloud_dim = 8
+        self.cloud_dim = 12
 
         self.radial_layers = 2
         self.sp = rescaled_act.Softplus(beta=1)
         self.sh = SO3.spherical_harmonics_xyz
 
+        # Embedding
+        self.emb = nn.Embedding(num_embeddings=16, embedding_dim=self.emb_dim)
+
         # Radial Model
-        self.max_radius = 2
         self.number_of_basis = 3
         self.neighbor_radius = 2
         self.RadialModel = partial(CosineBasisModel,
-                                   max_radius=self.max_radius,
+                                   max_radius=self.neighbor_radius,
                                    number_of_basis=self.number_of_basis,
                                    h=100,
                                    L=self.radial_layers,
                                    act=self.sp)
-        self.K = partial(se3cnn.point.kernel.Kernel, RadialModel=self.RadialModel, sh=self.sh)
+        self.K = partial(se3cnn.point.kernel.Kernel, RadialModel=self.RadialModel, sh=self.sh, normalization='norm')
+        self.NC = partial(NeighborsConvolution, self.K, self.neighbor_radius)
 
         # Cloud layers
-        self.emb = nn.Embedding(num_embeddings=16, embedding_dim=self.emb_dim)
-
-        cloud_dim = self.emb_dim
         self.clouds = nn.ModuleList()
+        cloud_dim = self.emb_dim
         dim_in = self.emb_dim
         dim_out = self.cloud_dim
+
         for c in range(self.nclouds):
             # Cloud
             Rs_in = [(dim_in, o) for o in range(1)]
             Rs_out = [(dim_out, o) for o in range(self.cloud_order)]
             print("Rs_in", Rs_in)
             print("Rs_out", Rs_out)
+            """
+            dimensionalities = [2 * L + 1 for mult, L in Rs_out for _ in range(mult)]
+            print(dimensionalities)
+            norm_activation = nl.norm_activation.NormActivation(dimensionalities,
+                                                                rescaled_act.sigmoid,
+                                                                rescaled_act.sigmoid)
+            print(norm_activation)
+            self.clouds.append(nl.gated_block.GatedBlock(Rs_in, Rs_out, self.sp, rescaled_act.sigmoid, Operation=self.NC))
+            """
             self.clouds.append(NeighborsConvolution(self.K, Rs_in, Rs_out, self.neighbor_radius))
+            """
+            self.clouds.append(GatedBlock(Rs_in, Rs_out, 
+                                          scalar_activation=self.sp,
+                                          gate_activation=rescaled_act.sigmoid,
+                                          Operation=self.NC))
+            """
             cloud_out = self.cloud_dim * (self.cloud_order**2)
+
             # Cloud residuals
             if self.residuals:
                 self.clouds.append(AtomResiduals(in_channel=cloud_out, res_blocks=self.resblocks, device=self.device))
@@ -86,16 +107,18 @@ class se3AtomCloudNet(nn.Module):
         for i, op in enumerate(self.clouds):
             features = op(features, geometry=xyz)
             #print(str(i+2), str(features.size()))
-        features = features.permute(0, 2, 1)
-
-        if feature_collation is not 'avg':
-            features = self.collate(features)
+        if 'avg' in self.feature_collation:
+            features = features.mean(1)
+        elif 'pool' in self.feature_collation: # not tested
+            features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
         else:
-            features = F.adaptive_avg_pool2d(f, (1, f.shape[2]))
+            features = features.permute(0, 2, 1)
+            features = self.collate(features)
 
         features = self.collate2(features.squeeze())
-        output = self.act()
+        output = self.act(features)
         return output
+
 
 class AtomCloudNet(nn.Module):
     def __init__(self, layers=[512, 256], device='cpu'):
@@ -178,21 +201,3 @@ class AtomCloudFeaturePropagation(nn.Module):
         f = self.fl(f)
         f = self.act(f).view(f.shape[0], 1)
         return f
-
-
-"""
-Nonlinearities
-There are two main nonlinearities that we use in se3cnn.
-
-se3cnn.non_linearities.norm_activation.NormActivation applies a nonlinearity to the norm of each representation vector (to each copy of each $L$ in Rs) and se3cnn.non_linearities.gated_block.GatedBlock applies a nonlinearity by gating each $L &gt; 0$ channel with an added scalar channel.
-
-In [7]:
-import se3cnn.non_linearities as nl
-from se3cnn.non_linearities import rescaled_act
-
-gated_block = nl.gated_block.GatedBlock(Rs_in, Rs_out, sp, rescaled_act.sigmoid, C)
-
-dimensionalities = [2 * L + 1 for mult, L in Rs_out for _ in range(mult)]
-norm_activation = nl.norm_activation.NormActivation(dimensionalities, rescaled_act.sigmoid, rescaled_act.sigmoid)
-print(norm_activation)
-"""

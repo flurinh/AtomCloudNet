@@ -461,8 +461,8 @@ def split_random_testset_QM9(PATH):
     random.seed(667)
 
 
-
-    """badf = []
+    """
+    badf = []
 
     for i in tqdm(fnames):
         fi = open(i)
@@ -481,10 +481,11 @@ def split_random_testset_QM9(PATH):
         try:
             shutil.move(i, PATH + "QM9Bad/")
         except:
-            pass"""
-
-    """for i in random.sample(range(0, 133710), 5000):
-        shutil.move(fnames[i], PATH + "QM9Test/")"""
-
-    for i in random.sample(range(0, 128710), 10000):
-        shutil.move(fnames[i], PATH + "QM9Train/")
+            pass
+    """
+    """
+    for i in random.sample(range(0, 133709), 5000):
+        shutil.move(fnames[i], PATH + "QM9Test/")
+    for j in random.sample(range(0, 128709), 10000):
+        shutil.move(fnames[j], PATH + "QM9Train/")
+    """
