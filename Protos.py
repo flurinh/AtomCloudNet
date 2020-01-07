@@ -66,12 +66,7 @@ class Protos:
                         make_dist_vector(xyz, types, res, i, radius=radius)
 
             print("Cleaning txt files...")
-            #clean_XYZ(mode='CV')
-            #clean_XYZ(mode='CV')
             get_all_stupid_atoms()
-            #get_all_stupid_atoms(mode='CV')
-            #get_nucleusNumber()
-            #get_cv()
 
             hist_files = glob.glob(PATH + 'hist/*.txt')
             print("Casting to xyz format...")
@@ -93,7 +88,6 @@ class Protos:
                     get_shift(path=PATH + 'raw/', name=i)
 
             mv_Res_without_Shift()
-            #mv_Res_without_Shift(mode='CV')
 
             clean_XYZ()
             clean_XYZ()
@@ -101,7 +95,6 @@ class Protos:
             print("Finalizing XYZ file...")
             for i in tqdm(id_list):
                 addlineto_xyz(i)
-                #addlineto_xyz(i, mode='CV')
 
         if analysis:
             xyz = xyz_loader(limit=limit)
