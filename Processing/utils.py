@@ -460,8 +460,31 @@ def split_random_testset_QM9(PATH):
     fnames = glob.glob(PATH + "QM9/*.xyz")
     random.seed(667)
 
-    """for i in random.sample(range(0, 133885), 5000):
+
+
+    """badf = []
+
+    for i in tqdm(fnames):
+        fi = open(i)
+        lines = fi.readlines()
+        fi.close()
+        #print(lines)
+
+        for line in lines:
+            if line.find('^') != -1:
+                badf.append(i)
+                shutil.move(i, PATH + "QM9Bad/")
+                print(i)
+    print(badf)
+
+    for i in badf:
+        try:
+            shutil.move(i, PATH + "QM9Bad/")
+        except:
+            pass"""
+
+    """for i in random.sample(range(0, 133710), 5000):
         shutil.move(fnames[i], PATH + "QM9Test/")"""
 
-    for i in random.sample(range(0, 128885), 10000):
+    for i in random.sample(range(0, 128710), 10000):
         shutil.move(fnames[i], PATH + "QM9Train/")
