@@ -22,18 +22,23 @@ class se3AtomCloudNet(nn.Module):
 
         self.emb_dim = 32
 
+        self.residuals = True
+        self.resblocks = 1
+
+        self.cloudnorm = True
+
         self.nclouds = nclouds
-        self.cloud_order = 5
-        self.cloud_dim = 128
+        self.cloud_order = 3
+        self.cloud_dim = 8
 
         self.radial_layers = 2
-        self.sp = rescaled_act.Softplus(beta=5)
+        self.sp = rescaled_act.Softplus(beta=1)
         self.sh = SO3.spherical_harmonics_xyz
 
         # Radial Model
-        self.max_radius = 1
+        self.max_radius = 2
         self.number_of_basis = 3
-        self.neighbor_radius = 1.8
+        self.neighbor_radius = 2
         self.RadialModel = partial(CosineBasisModel,
                                    max_radius=self.max_radius,
                                    number_of_basis=self.number_of_basis,
@@ -42,7 +47,7 @@ class se3AtomCloudNet(nn.Module):
                                    act=self.sp)
         self.K = partial(se3cnn.point.kernel.Kernel, RadialModel=self.RadialModel, sh=self.sh)
 
-        # Network layers
+        # Cloud layers
         self.emb = nn.Embedding(num_embeddings=16, embedding_dim=self.emb_dim)
 
         cloud_dim = self.emb_dim
@@ -50,19 +55,26 @@ class se3AtomCloudNet(nn.Module):
         dim_in = self.emb_dim
         dim_out = self.cloud_dim
         for c in range(self.nclouds):
+            # Cloud
             Rs_in = [(dim_in, o) for o in range(1)]
             Rs_out = [(dim_out, o) for o in range(self.cloud_order)]
             print("Rs_in", Rs_in)
             print("Rs_out", Rs_out)
             self.clouds.append(NeighborsConvolution(self.K, Rs_in, Rs_out, self.neighbor_radius))
             cloud_out = self.cloud_dim * (self.cloud_order**2)
-            self.clouds.append(AtomResiduals(in_channel=cloud_out, res_blocks=1, device=self.device))
-            res_out = 2 * cloud_out
+            # Cloud residuals
+            if self.residuals:
+                self.clouds.append(AtomResiduals(in_channel=cloud_out, res_blocks=self.resblocks, device=self.device))
+                res_out = 2 * cloud_out
             dim_in = res_out
 
-        # molecular collation
+        # molecular feature collation (either dense layer or average pooling of atoms)
         self.collate = nn.Linear(self.natoms, 1)
+
+        # passing molecular features through output layer
         self.collate2 = nn.Linear(res_out, 1)
+
+        # output activation layer
         self.act = nn.Sigmoid()
 
     def forward(self, xyz, features):
@@ -75,9 +87,14 @@ class se3AtomCloudNet(nn.Module):
             features = op(features, geometry=xyz)
             #print(str(i+2), str(features.size()))
         features = features.permute(0, 2, 1)
-        features = self.collate(features)
-        features = features.squeeze()
-        output = self.act(self.collate2(features))
+
+        if feature_collation is not 'avg':
+            features = self.collate(features)
+        else:
+            features = F.adaptive_avg_pool2d(f, (1, f.shape[2]))
+
+        features = self.collate2(features.squeeze())
+        output = self.act()
         return output
 
 class AtomCloudNet(nn.Module):

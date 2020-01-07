@@ -3,6 +3,7 @@ from Processing.loader2 import *
 
 from torch.utils.data import DataLoader
 
+
 from tqdm import tqdm, trange
 
 
@@ -12,8 +13,7 @@ class ACN:
         self.run_id = 1
         self.path = 'data/QM9'
         self.save_path = 'models/model_' + str(self.run_id).zfill(5)
-        self.batch_size = 16
-        self.real_batch_size = 1
+        self.batch_size = 128
         self.nepochs = 30
         self.ngpus = 0
         feats = ['prot', 'ph']
@@ -57,7 +57,7 @@ class ACN:
                 feat = Z.view(xyz.shape[0], xyz.shape[1]).to(self.device)
                 prediction = model(xyz, feat)
                 loss = self.criterion(prediction, urt.to(self.device))
-                loss_ = torch.sqrt(loss).cpu().item() * 600
+                loss_ = torch.sqrt(loss).cpu().item()
                 tot_loss += loss_
                 avg_loss = tot_loss / i
                 pbar.set_description("epoch-avg-loss::{}  "
@@ -102,7 +102,7 @@ class ACN:
                 feat = Z.view(xyz.shape[0], xyz.shape[2]).to(self.device)
                 prediction = model(feat, xyz)
                 loss = self.criterion(prediction, urt.to(self.device))
-                loss_ = torch.sqrt(loss).cpu().item() * 600
+                loss_ = torch.sqrt(loss).cpu().item()
                 tot_loss += loss_
                 avg_loss = tot_loss / i
                 pbar.set_description("epoch-avg-loss::{}  "

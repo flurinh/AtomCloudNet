@@ -460,5 +460,8 @@ def split_random_testset_QM9(PATH):
     fnames = glob.glob(PATH + "QM9/*.xyz")
     random.seed(667)
 
-    for i in random.sample(range(0, 133885), 5000):
-        shutil.move(fnames[i], PATH + "QM9Test/")
+    """for i in random.sample(range(0, 133885), 5000):
+        shutil.move(fnames[i], PATH + "QM9Test/")"""
+
+    for i in random.sample(range(0, 128885), 10000):
+        shutil.move(fnames[i], PATH + "QM9Train/")
