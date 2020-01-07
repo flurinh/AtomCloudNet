@@ -1,8 +1,6 @@
 import torch
 
 
-# TODO: WRITE CLASS THAT
-
 class NeighborsConvolution(torch.nn.Module):
     def __init__(self, Kernel, Rs_in, Rs_out, radius):
         super().__init__()

@@ -87,11 +87,11 @@ class qm9_loader(Dataset):
                                  'isotropicpol': isotropicpol,
                                  'homo': homo,
                                  'lumo': lumo,
-                                 'gap': gap,
+                                 'gap': gap, # Todo: run
                                  'elect_spa_ext': elect_spa_ext,
                                  'zeropointvib': zeropointvib,
                                  'u0': u0,  # Internal energy at 0K
-                                 'Urt': Urt,  # Internal energy at 298.15K
+                                 'Urt': Urt,  # Internal energy at 298.15K Todo: Run
                                  'Hrt': Hrt,  # Enthalpy at 298.15K
                                  'Grt': Grt,  # Free energy at 298.15K
                                  'heatcap': heatcap}

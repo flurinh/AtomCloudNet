@@ -1,14 +1,92 @@
 from Architectures.atomcloud import *
 from Architectures.cloud_utils import *
-import torch.nn.functional as F
 
+import se3cnn
+from se3cnn import SO3
+from se3cnn.point.radial import CosineBasisModel
+import se3cnn.non_linearities as nl
+from se3cnn.non_linearities import rescaled_act
+from se3cnn.point.kernel import Kernel
+from se3cnn.point.operations import Convolution, NeighborsConvolution
+import torch.nn.functional as F
+import torch.nn as nn
+from functools import partial
+
+
+class se3AtomCloudNet(nn.Module):
+    def __init__(self, device='cpu', nclouds = 1, natoms = 30):
+        super(se3AtomCloudNet, self).__init__()
+        # Define all the necessary stats of the network
+        self.device = device
+        self.natoms = natoms
+
+        self.emb_dim = 32
+
+        self.nclouds = nclouds
+        self.cloud_order = 5
+        self.cloud_dim = 128
+
+        self.radial_layers = 2
+        self.sp = rescaled_act.Softplus(beta=5)
+        self.sh = SO3.spherical_harmonics_xyz
+
+        # Radial Model
+        self.max_radius = 1
+        self.number_of_basis = 3
+        self.neighbor_radius = 1.8
+        self.RadialModel = partial(CosineBasisModel,
+                                   max_radius=self.max_radius,
+                                   number_of_basis=self.number_of_basis,
+                                   h=100,
+                                   L=self.radial_layers,
+                                   act=self.sp)
+        self.K = partial(se3cnn.point.kernel.Kernel, RadialModel=self.RadialModel, sh=self.sh)
+
+        # Network layers
+        self.emb = nn.Embedding(num_embeddings=16, embedding_dim=self.emb_dim)
+
+        cloud_dim = self.emb_dim
+        self.clouds = nn.ModuleList()
+        dim_in = self.emb_dim
+        dim_out = self.cloud_dim
+        for c in range(self.nclouds):
+            Rs_in = [(dim_in, o) for o in range(1)]
+            Rs_out = [(dim_out, o) for o in range(self.cloud_order)]
+            print("Rs_in", Rs_in)
+            print("Rs_out", Rs_out)
+            self.clouds.append(NeighborsConvolution(self.K, Rs_in, Rs_out, self.neighbor_radius))
+            cloud_out = self.cloud_dim * (self.cloud_order**2)
+            self.clouds.append(AtomResiduals(in_channel=cloud_out, res_blocks=1, device=self.device))
+            res_out = 2 * cloud_out
+            dim_in = res_out
+
+        # molecular collation
+        self.collate = nn.Linear(self.natoms, 1)
+        self.collate2 = nn.Linear(res_out, 1)
+        self.act = nn.Sigmoid()
+
+    def forward(self, xyz, features):
+        assert xyz.size()[:1] == features.size()[:1], "xyz ({}) and feature size ({}) should match"\
+            .format(xyz.size(), features.size())
+        #print("0", features.size())
+        features = self.emb(features)
+        #print("1", features.size())
+        for i, op in enumerate(self.clouds):
+            features = op(features, geometry=xyz)
+            #print(str(i+2), str(features.size()))
+        features = features.permute(0, 2, 1)
+        features = self.collate(features)
+        features = features.squeeze()
+        output = self.act(self.collate2(features))
+        return output
 
 class AtomCloudNet(nn.Module):
     def __init__(self, layers=[512, 256], device='cpu'):
-        self.device = device
         super(AtomCloudNet, self).__init__()
+        self.device = device
 
-        self.emb = AtomEmbedding(embedding_dim=128, transform=True, device=self.device)
+        self.emb_dim = 16
+        self.emb = AtomEmbedding(embedding_dim=self.emb_dim, transform=True, device=self.device)
 
         self.cloud1 = Atomcloud(natoms=15, nfeats=128, radius=None, layers=[32, 48, 64], include_self=True,
                                 retain_features=False, mode='potential', device=self.device)
@@ -53,23 +131,22 @@ class AtomCloudNet(nn.Module):
         return f
 
 
-
 class AtomCloudFeaturePropagation(nn.Module):
     def __init__(self, layers=[512, 256], device='cpu'):
         super(AtomCloudFeaturePropagation, self).__init__()
-        self.device=device
-        final_features = 128
-
+        self.device = device
+        self.final_features_ = 128
         self.emb = AtomEmbedding(embedding_dim=128, transform=False, device=self.device)
-
         self.cloud1 = Atomcloud(natoms=4, nfeats=128, radius=None, layers=[128, 256, 512], include_self=True,
                                 retain_features=True, mode='potential', device=self.device)
-        # if retain_features is True input to the next layer is nfeats +
-        # layers[-1] if False layers[-1]
+        # if retain_features is True input to the next layer has dim nfeats +
+        # layers[-1] else layers[-1]
         self.atom_res1 = AtomResiduals(in_channel=640, res_blocks=2, device=self.device)
-        self.cloud2 = Atomcloud(natoms=4, nfeats=1280, radius=None, layers=[1280, 1280, final_features],
+        self.cloud2 = Atomcloud(natoms=4, nfeats=1280, radius=None, layers=[1280, 1280, self.final_features_],
                                 include_self=True, retain_features=False, mode='potential', device=self.device)
-        self.fl = nn.Linear(final_features, 1)
+
+        # This is used to collapse the features space of the atoms to 1 feature
+        self.fl = nn.Linear(self.final_features_, 1)
         self.act = nn.Sigmoid()
 
     def forward(self, xyz, features):
@@ -84,3 +161,21 @@ class AtomCloudFeaturePropagation(nn.Module):
         f = self.fl(f)
         f = self.act(f).view(f.shape[0], 1)
         return f
+
+
+"""
+Nonlinearities
+There are two main nonlinearities that we use in se3cnn.
+
+se3cnn.non_linearities.norm_activation.NormActivation applies a nonlinearity to the norm of each representation vector (to each copy of each $L$ in Rs) and se3cnn.non_linearities.gated_block.GatedBlock applies a nonlinearity by gating each $L &gt; 0$ channel with an added scalar channel.
+
+In [7]:
+import se3cnn.non_linearities as nl
+from se3cnn.non_linearities import rescaled_act
+
+gated_block = nl.gated_block.GatedBlock(Rs_in, Rs_out, sp, rescaled_act.sigmoid, C)
+
+dimensionalities = [2 * L + 1 for mult, L in Rs_out for _ in range(mult)]
+norm_activation = nl.norm_activation.NormActivation(dimensionalities, rescaled_act.sigmoid, rescaled_act.sigmoid)
+print(norm_activation)
+"""

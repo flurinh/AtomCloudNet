@@ -18,6 +18,10 @@ import se3cnn.point.operations
 import se3cnn.non_linearities as nl
 from se3cnn.non_linearities import rescaled_act
 
+from spherical import *
+from Architectures.AtomCloudNet import *
+
+
 torch.set_default_dtype(torch.float64)
 
 
@@ -47,8 +51,8 @@ C_input = torch.tensor([[0., 1.] for i in range(C_geo.shape[-2])])
 H_input = torch.tensor([[1., 0.] for i in range(H_geo.shape[-2])])
 input = torch.cat([C_input, H_input])
 
-print(geometry.shape)
-print(input.shape)
+# print(geometry.shape)
+# print(input.shape)
 # Inside se3cnn.point.radial.CosineBasisModel
 
 max_radius = 1
@@ -89,6 +93,8 @@ C = partial(se3cnn.point.operations.Convolution, K)
 Rs_in = [(2, 0)]
 Rs_out = [(4, 0), (4, 1), (4, 2), (4, 3)]
 convolution = se3cnn.point.operations.Convolution(K, Rs_in, Rs_out)
+neighborconv = se3cnn.point.operations.NeighborsConvolution(K, Rs_in, Rs_out, radius=1.4)
+print(neighborconv.radius)
 
 
 gated_block = nl.gated_block.GatedBlock(Rs_in, Rs_out, sp, rescaled_act.sigmoid, C)
@@ -96,19 +102,27 @@ gated_block = nl.gated_block.GatedBlock(Rs_in, Rs_out, sp, rescaled_act.sigmoid,
 dimensionalities = [2 * L + 1 for mult, L in Rs_out for _ in range(mult)]
 norm_activation = nl.norm_activation.NormActivation(dimensionalities, rescaled_act.sigmoid, rescaled_act.sigmoid)
 
-print(K)
-print(C)
-print(gated_block)
 
-model_parameters = filter(lambda p: p.requires_grad, convolution.parameters())
+model_parameters = filter(lambda p: p.requires_grad, gated_block.parameters())
 params = sum([np.prod(p.size()) for p in model_parameters])
 print("Number of parameters in conv:", params)
-conv_out = convolution(input.unsqueeze(0), geometry.unsqueeze(0))
-print(conv_out.shape)
+transformed = neighborconv(input.unsqueeze(0), geometry.unsqueeze(0))
 
 
+print("geometry:", geometry.shape)
+print("input:", input.shape)
+print("Rs input:", Rs_in)
+print("transformed:", transformed.shape)
+print("Rs out:", Rs_out)
+
+fig = plot_neighborhood(geometry, input.unsqueeze(0), Rs_in, "Input")
+fig.update_layout(scene_aspectmode='data')
+fig.show()
 
 
+fig = plot_neighborhood(geometry, transformed, Rs_out, "Transformed")
+fig.update_layout(scene_aspectmode='data')
+fig.show()
 
 """
 class Network(torch.nn.Module):

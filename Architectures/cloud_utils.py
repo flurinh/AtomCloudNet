@@ -42,6 +42,13 @@ def cloud_sampling(xyz, Z, natoms, radius=None, include_self=True, mode='distanc
 
 
 def cloud_mask(dists, natoms, include_self):
+    """
+    Returns a mask for neighborhood given a distance matrix
+    :param dists: distances between atoms
+    :param natoms: number of atoms to be selected
+    :param include_self: whether to include itself
+    :return:
+    """
     dists_sorted = torch.argsort(dists, dim=1, descending=False)
     if not include_self:
         natoms += 1
