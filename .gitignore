@@ -5,14 +5,9 @@ data2
 hist
 qm9_data
 cache
+runs
+models
+
 
 env.yml
 environment.yml
-architect.py
-spherical.py
-spherical_ex.py
-ops_ex.py
-gravity_ex.py
-build_model_ex.py
-symmetry_ex.py
-utils.py
