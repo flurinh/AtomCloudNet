@@ -5,6 +5,8 @@ import os
 import csv
 from collections import namedtuple
 from Bio.PDB import PDBParser
+import random
+import shutil
 
 PATH = 'data/'
 
@@ -451,3 +453,12 @@ def addlineto_xyz(name, mode='hist', path=PATH):
                 break
         openfile.close()
     return
+
+
+
+def split_random_testset_QM9(PATH):
+    fnames = glob.glob(PATH + "QM9/*.xyz")
+    random.seed(667)
+
+    for i in random.sample(range(0, 133885), 5000):
+        shutil.move(fnames[i], PATH + "QM9Test/")
