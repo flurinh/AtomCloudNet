@@ -68,7 +68,7 @@ class Config:
                 for e in epochs:
                     for b in batchsize:
                         self.idx += 1
-                        new_config = path + '_' + str(setting + self.idx).zfill(5) + '.ini'
+                        new_config = path + '_' + str(self.idx).zfill(5) + '.ini'
                         self.parser['SETTING']['lr'] = str(l)
                         self.parser['SETTING']['epochs'] = str(e)
                         self.parser['SETTING']['batchsize'] = str(b)

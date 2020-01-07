@@ -16,12 +16,11 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, SubsetRandomSampler
 
 
-
 class ACN:
     def __init__(self,
                  run_id=1):
         path = 'config_ACN/config_'
-        self.hyperparams = get_config(run_id=run_id, path=path)
+        self.hyperparams = get_config2(run_id=run_id, path=path)
         self.type = self.hyperparams[0]
         print(self.hyperparams)
         self.run_id = run_id
@@ -47,7 +46,7 @@ class ACN:
         self.train_writer = SummaryWriter(self.train_path)
 
         self.path = 'data/QM9'
-        self.batch_size = self.hyperparams[7]
+        self.batch_size = self.hyperparams[3]
         self.ngpus = 0
         feats = ['prot', 'ph']
         data = qm9_loader(feats=feats, limit=12800, path=self.path + '/*.xyz')
@@ -59,7 +58,7 @@ class ACN:
         if self.device is 'cuda':
             torch.cuda.synchronize()
 
-        self.nepochs = self.hyperparams[6]
+        self.nepochs = self.hyperparams[2]
 
         print("Using device:", self.device)
 
@@ -115,6 +114,7 @@ class ACN:
                 if step % 10 == 0:
                     self.train_writer.add_text('train_prediction', str(ex_pred), step)
                     self.train_writer.add_text('train_target', str(ex_target), step)
+                history.append(loss_)
             # Todo: Implement a validation setting
             # torch.save(model, self.save_path + '.pt')
         return model, history
@@ -164,8 +164,9 @@ class ACN:
 
 
 if __name__ == '__main__':
-    net = ACN()
-    print("Starting training...")
-    print(net)
+    parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
+    parser.add_argument('--run', type=int, default=1)
+    args = parser.parse_args()
+    net = ACN(run_id=args.run)
     if net.type == 'ACN':
-        net.train_molecular_model()
+        model, history = net.train_molecular_model()

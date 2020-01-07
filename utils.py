@@ -19,3 +19,15 @@ def get_config(run_id = 1, path = "config/config_"):
     batchsize = int(parser['SETTING']['batchsize'])
     architectures = list(ast.literal_eval(parser.get("SETTING", "layers")))
     return model, lr, momentum, dropout, patience, pfactor, epochs, batchsize, architectures
+
+
+def get_config2(run_id = 1, path = "config/config_"):
+    config_file = path + str(run_id).zfill(5) + ".ini"
+    print("Loading config files.. " + config_file)
+    parser = ConfigParser()
+    parser.read(config_file)
+    model = parser['SETTING']['model']
+    lr = float(parser['SETTING']['lr'])
+    epochs = int(parser['SETTING']['epochs'])
+    batchsize = int(parser['SETTING']['batchsize'])
+    return model, lr, epochs, batchsize
