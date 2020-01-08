@@ -2,7 +2,6 @@ from Architectures.atomcloud import *
 from Architectures.cloud_utils import *
 
 import se3cnn
-from se3cnn import SO3
 from se3cnn.point.radial import CosineBasisModel
 import se3cnn.non_linearities as nl
 from se3cnn.non_linearities import rescaled_act
@@ -28,18 +27,20 @@ class se3AtomCloudNet(nn.Module):
         self.resblocks = 1
         self.cloudnorm = True
         self.feature_collation = 'avg' # pool or else use dense layer
+        self.nffl = 1
+        self.ffl1size = 128
 
         # Cloud specifications
         self.nclouds = nclouds
         self.cloud_order = 3
-        self.cloud_dim = 12
+        self.cloud_dim = 24
 
         self.radial_layers = 2
         self.sp = rescaled_act.Softplus(beta=1)
-        self.sh = SO3.spherical_harmonics_xyz
+        self.sh = se3cnn.SO3.spherical_harmonics_xyz
 
         # Embedding
-        self.emb = nn.Embedding(num_embeddings=16, embedding_dim=self.emb_dim)
+        self.emb = nn.Embedding(num_embeddings=6, embedding_dim=self.emb_dim)
 
         # Radial Model
         self.number_of_basis = 3
@@ -91,12 +92,19 @@ class se3AtomCloudNet(nn.Module):
 
         # molecular feature collation (either dense layer or average pooling of atoms)
         self.collate = nn.Linear(self.natoms, 1)
-
         # passing molecular features through output layer
-        self.collate2 = nn.Linear(res_out, 1)
-
+        self.collate2 = nn.ModuleList()
+        in_shape = res_out
+        for _ in range(self.nffl):
+            out_shape = self.ffl1size // (_ + 1)
+            self.collate2.append(nn.Linear(in_shape, out_shape))
+            # self.collate2.append(nn.Dropout(.1))
+            self.collate2.append(nn.BatchNorm1d(out_shape))
+            in_shape = out_shape
+        self.outputlayer = nn.Linear(in_shape, 1)
         # output activation layer
         self.act = nn.Sigmoid()
+
 
     def forward(self, xyz, features):
         assert xyz.size()[:1] == features.size()[:1], "xyz ({}) and feature size ({}) should match"\
@@ -104,7 +112,7 @@ class se3AtomCloudNet(nn.Module):
         #print("0", features.size())
         features = self.emb(features)
         #print("1", features.size())
-        for i, op in enumerate(self.clouds):
+        for _, op in enumerate(self.clouds):
             features = op(features, geometry=xyz)
             #print(str(i+2), str(features.size()))
         if 'avg' in self.feature_collation:
@@ -114,9 +122,10 @@ class se3AtomCloudNet(nn.Module):
         else:
             features = features.permute(0, 2, 1)
             features = self.collate(features)
-
-        features = self.collate2(features.squeeze())
-        output = self.act(features)
+        features = features.squeeze()
+        for _, op in enumerate(self.collate2):
+            features = F.relu(op(features))
+        output = self.act(self.outputlayer(features))
         return output
 
 
@@ -167,7 +176,7 @@ class AtomCloudNet(nn.Module):
         f = self.drop1(F.relu(self.bn1(self.fc1(f))))
         f = self.drop2(F.relu(self.bn2(self.fc2(f))))
         f = self.fc3(f)
-        f = torch.sigmoid(f)
+        f = F.softmax(f, dim=1)
         return f
 
 

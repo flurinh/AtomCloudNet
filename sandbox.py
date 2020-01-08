@@ -65,26 +65,24 @@ class ACN:
     def train_molecular_model(self):
         history = []
         model = se3AtomCloudNet(device=self.device).float()
+        if self.verbose > 0:
+            print(model)
         model.train()
         criterion = nn.MSELoss()
         opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1])
         opt.zero_grad()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
-
         if self.verbose > 0:
             print(model)
             print("Number trainable parameters:", params)
-
         """
         if torch.cuda.device_count() > 1:
             self.ngpus = torch.cuda.device_count()
             print("Let's use" + str(self.ngpus) + "GPUs!")
             model = torch.nn.DataParallel(model)
         """
-
         model.to(self.device)
-
         step = 0
         torch.autograd.set_detect_anomaly(True)
         pbar = tqdm(self.loader)
@@ -93,7 +91,7 @@ class ACN:
             for i, (xyz, Z, prot_ids, partial, urt) in enumerate(pbar, start=1):
                 step += 1
                 xyz = xyz.to(self.device)
-                feat = Z.view(xyz.shape[0], xyz.shape[1]).to(self.device)
+                feat = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
                 prediction = model(xyz, feat)
                 loss = criterion(prediction, urt.to(self.device))
                 opt.zero_grad()
@@ -123,7 +121,6 @@ class ACN:
         history = []
         model = AtomCloudFeaturePropagation(device=self.device).float()
         model.train()
-
         criterion = nn.MSELoss()
         opt = torch.optim.Adam(model.parameters(), lr=1e-3)
         opt.zero_grad()
@@ -147,7 +144,7 @@ class ACN:
             for i, (xyz, Z, prot_ids, partial, urt) in enumerate(pbar, start=1):
                 opt.zero_grad()
                 xyz = xyz.permute(0, 2, 1).to(self.device)
-                feat = Z.view(xyz.shape[0], xyz.shape[2]).to(self.device)
+                feat = prot_ids.view(xyz.shape[0], xyz.shape[2]).to(self.device)
                 prediction = model(feat, xyz)
                 loss = criterion(prediction, urt.to(self.device))
                 loss_ = torch.sqrt(loss).cpu().item()
@@ -164,6 +161,9 @@ class ACN:
 
 
 if __name__ == '__main__':
+    # run: module load python_gpu/3.7.1 gcc/6.3.0
+    # conda install -c psi4 gcc-5
+    # https://scicomp.ethz.ch/wiki/Using_the_batch_system
     parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
     parser.add_argument('--run', type=int, default=1)
     args = parser.parse_args()

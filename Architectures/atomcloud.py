@@ -171,7 +171,6 @@ class Atomcloud(nn.Module):
         batch_size, natoms, nfeatures = features.size()
         new_features = torch.zeros((batch_size, natoms, self.out_features)).to(self.device)
         Z = Z.view(-1, Z.shape[1], 1)
-        # Todo: for each atom go through the entire model and generate new features
         # clouds is a list of masks for all atoms
         clouds, dists = cloud_sampling(xyz, Z=Z.float(), natoms=self.natoms, radius=self.radius, mode=self.mode,
                                        include_self=self.include_self)
@@ -183,11 +182,6 @@ class Atomcloud(nn.Module):
             new_features[:, c] = self.cloud(xyz_, features, centroid, cloud).to(self.device)
 
         if self.retain_features:
-            """
-            print("features",features.shape)
-            print("new features",new_features.shape)
-            print("concatenate features", torch.cat([features, new_features], axis=2).shape)
-            """
             return torch.cat([features, new_features], axis=2)
         else:
             return new_features
