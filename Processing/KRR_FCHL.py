@@ -8,56 +8,95 @@ from qml.math import cho_solve
 from qml.representations import *
 from qml.fchl import get_local_kernels
 from tqdm import tqdm
-import sys
-from QML_Loader import *
 
-np.set_printoptions(threshold=sys.maxsize)
+def get_energies(filename):
 
-path = "../data/"
-PATH = path
+    f = open(filename, "r")
+    lines = f.readlines()
+    f.close()
 
-X, X_test, Yprime, Ytest = get_FCHL(PATH)
+    energies = dict()
 
-N = [100, 1000, 2000, 5000]
-nModels = 10
-total = 10000
+    for line in lines:
+        tokens = line.split()
+        xyz_name = tokens[0]
+        Ebind = float(tokens[1])
+        energies[xyz_name] = Ebind
 
-sigma = [0.2 * 2 ** i for i in range(20)]
+    return energies
 
-random.seed(667)
+if __name__ == "__main__":
 
-print("\n -> calculating FCHL Kernels")
+    print("\n -> load binding energies")
 
-K = get_local_kernels(X, X, sigma, cut_distance=10.0)
-K_test = get_local_kernels(X, X_test, sigma, cut_distance=10.0)
+    data = get_energies("../data/trainUrt.txt")
+    data2 = get_energies("../data/testUrt.txt")
+    mols = []
+    mols_test = []
+    for xyz_file in sorted(data.keys()):
+        mol = qml.Compound()
+        mol.read_xyz("../data/QM9Train/" + xyz_file)
+        mol.properties = data[xyz_file]
+        mols.append(mol)
+    for xyz_file in sorted(data2.keys()):
+        mol = qml.Compound()
+        mol.read_xyz("../data/QM9Test/" + xyz_file)
+        mol.properties = data2[xyz_file]
+        mols_test.append(mol)
 
-print("\n -> calculating FCHL predictions")
+    print("\n -> generate FCHL representation")
+    for mol in tqdm(mols):
+        mol.generate_fchl_representation()
+    for mol in tqdm(mols_test):
+        mol.generate_fchl_representation()
 
-for j in tqdm(range(len(sigma))):
-    for train in tqdm(N):
-        maes    = []
-        test = total - train
-        for i in tqdm(range(nModels)):
-            split = list(range(total))
-            random.shuffle(split)
+    N = [100, 1000, 2000, 5000, 10000]
+    nModels = 10
+    total = 10000
 
-            training_index  = split[:train]
-            test_index      = split[-test:]
+    sigma   =  [0.2*2**i for i in range(20)]
 
-            Y = Yprime[training_index]
-            Ys = Yprime[test_index]
+    X = np.asarray([mol.representation for mol in mols])
+    X_test = np.asarray([mol.representation for mol in mols_test])
 
-            C = deepcopy(K[j][training_index][:, training_index])
-            C[np.diag_indices_from(C)] += 10.0**(-7.0)
-            alpha = cho_solve(C, Y)
+    Yprime  = np.asarray([mol.properties for mol in mols])
+    Ytest  = np.asarray([mol.properties for mol in mols_test])
 
-            Yss = np.dot((K_test[j][training_index]).T, alpha)
+    print("\n -> calculating kernels")
+    K = get_local_kernels(X, X, sigma, cut_distance=10.0)
+    K_test = get_local_kernels(X, X_test, sigma, cut_distance=10.0)
 
-            diff = Yss  - Ytest
-            mae = np.mean(np.abs(diff))
-            maes.append(mae)
-            rms = sqrt(mean_squared_error(Yss, Ytest))
-            rms = rms * 3.7
-        s = np.std(maes) / np.sqrt(nModels)
+    random.seed(667)
 
-        print(str(sigma[j]) + "\t" + str(train) + "\t" + str(sum(maes) / len(maes)) + "\t" + str(s) + "\t" + str(rms))
+    print("\n -> calculating cross validation and predictions")
+    for j in tqdm(range(len(sigma))):
+
+        for train in N:
+            maes = []
+            test = total - train
+            for i in range(nModels):
+                split = list(range(total))
+                random.shuffle(split)
+
+                training_index = split[:train]
+                test_index = split[-test:]
+
+                # print(len(training_index))
+                # print(len(test_index))
+
+                Y = Yprime[training_index]
+                Ys = Yprime[test_index]
+
+                C = deepcopy(K[training_index][:, training_index])
+                C[np.diag_indices_from(C)] += 10.0 ** (-7.0)
+
+                alpha = cho_solve(C, Y)
+
+                Yss = np.dot((K_test[training_index]).T, alpha)
+                diff = Yss - Ytest
+                mae = np.mean(np.abs(diff))
+                maes.append(mae)
+                rms = sqrt(mean_squared_error(Yss, Ytest))
+            s = np.std(maes) / np.sqrt(nModels)
+
+            print(str(sigma[j]) + "\t" + str(train) + "\t" + str(sum(maes) / len(maes)) + "\t" + str(s) + "\t" + str(rms))

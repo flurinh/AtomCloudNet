@@ -31,6 +31,13 @@ def get_energies(filename):
 
     return energies
 
+
+
+# todo: fchl
+
+
+
+
 def get_FCHL(PATH):
 
     print("\n -> calculating dict with properties")
@@ -66,6 +73,11 @@ def get_FCHL(PATH):
 
     return X, X_test, Yprime, Ytest
 
+
+
+
+
+# todo: cm
 
 
 
@@ -115,9 +127,9 @@ def get_en_file(PATH):
         l2 = fi.readline()
         fi.close()
         tokens = l2.split()
-        print(f[16:], tokens[14])
+        print(f[16:], tokens[5])
 
 
-#get_en_file(PATH)
+get_en_file(PATH)
 #get_FCHL(PATH)
-get_CM(PATH)
+#get_CM(PATH)
