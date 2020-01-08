@@ -49,7 +49,7 @@ class ACN:
         self.batch_size = self.hyperparams[3]
         self.ngpus = 0
         feats = ['prot', 'ph']
-        data = qm9_loader(feats=feats, limit=1280, path=self.path + '/*.xyz')
+        data = qm9_loader(feats=feats, limit=12800, path=self.path + '/*.xyz')
         print("\nTotal number of samples assembled:", data.__len__())
         self.loader = DataLoader(data, batch_size=self.batch_size, shuffle=True)
 

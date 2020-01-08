@@ -33,7 +33,7 @@ class se3AtomCloudNet(nn.Module):
         # Cloud specifications
         self.nclouds = nclouds
         self.cloud_order = 3
-        self.cloud_dim = 12
+        self.cloud_dim = 24
 
         self.radial_layers = 2
         self.sp = rescaled_act.Softplus(beta=1)
