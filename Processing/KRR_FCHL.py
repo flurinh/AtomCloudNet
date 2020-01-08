@@ -50,11 +50,11 @@ if __name__ == "__main__":
     for mol in tqdm(mols_test):
         mol.generate_fchl_representation()
 
-    N = [100, 1000, 2000, 5000, 10000]
+    N = [100, 1000, 2000]
     nModels = 10
-    total = 10000
+    total = 2000
 
-    sigma   =  [0.2*2**i for i in range(20)]
+    sigma   =  [0.2*2**i for i in range(14, 17)]
 
     X = np.asarray([mol.representation for mol in mols])
     X_test = np.asarray([mol.representation for mol in mols_test])

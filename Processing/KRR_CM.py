@@ -63,6 +63,7 @@ if __name__ == "__main__":
     random.seed(667)
 
     sigmas   =  [0.2*2**i for i in range(8, 12)]
+    sigmas = [104857.6]
 
     X = np.asarray([mol.representation for mol in mols])
     X_test = np.asarray([mol.representation for mol in mols_test])
