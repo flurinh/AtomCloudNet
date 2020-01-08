@@ -19,8 +19,8 @@ if __name__ == '__main__':
         for i in range(num_runs):
             ini_id = i + 1
             print("Running configuration N°" + str(ini_id).zfill(5))
-            # os.system('bsub -W 120:00 -R "rusage[mem=16382, ngpus_excl_p=1]" python parser.py --run ' + str(int(setting) + ini_id))
-            os.system('bsub -W 24:00 python parser.py --run ' + str(ini_id))
+            os.system('bsub -W 24:00 -R "rusage[mem=16382]" python sandbox.py --run ' + str(ini_id))
+            # os.system('bsub -W 24:00 python sandbox.py --run ' + str(ini_id))
             # os.system('python sandbox.py --run ' + str(int(ini_id)))
 
     if args.setting == 0:
