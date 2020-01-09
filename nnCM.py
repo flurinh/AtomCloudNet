@@ -13,8 +13,8 @@ np.set_printoptions(threshold=sys.maxsize)
 path = "data/"
 PATH = path
 
-def get_energies(filename):
 
+def get_energies(filename):
     f = open(filename, "r")
     lines = f.readlines()
     f.close()
@@ -29,7 +29,12 @@ def get_energies(filename):
 
     return energies
 
+
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
+    parser.add_argument('--run', type=int, default=1)
+    args = parser.parse_args()
 
     print("\n -> make dict of binding energy of molecules")
 
@@ -75,7 +80,7 @@ if __name__ == "__main__":
 
     # TODO: Load data into nn and run nn
 
-    hyperparam  = get_config(run_id=1)
+    hyperparam  = get_config(run_id=args.run)
 
     model = CoulombNet(10000, layers=hyperparam[8], dropout=hyperparam[3])
 
@@ -96,6 +101,7 @@ if __name__ == "__main__":
     niter = X.shape[0] // batch_size
     print("Number iterations:", niter)
     prediction = None
+    list_losses = []
     for e in trange(epochs):
         ids = np.random.shuffle(np.arange(K.shape[0]))
         X_ = K[ids].squeeze()
@@ -124,7 +130,6 @@ if __name__ == "__main__":
         print("Training Loss (MSE):", mean_epoch_loss)
         mean_epoch_loss = 0
         epoch_loss = 0
-
         if e % 20 == 0:
             model.eval()
             xt_in = torch.tensor(K_test, dtype=torch.float)
@@ -145,7 +150,10 @@ if __name__ == "__main__":
             print("MAE:", mae_loss)
             print("RMSE:", rmse)
             print(" ===========================")
-            
-            """print(Ytest)
-            print(prediction)
-            torch.save(model, 'model_coulomb.pt')"""
+        list_losses.append(mae_loss)
+    print(mean_epoch_loss)
+    import csv
+
+    with open('runs/cm_bs_'+str(args.run), 'wb') as myfile:
+        wr = csv.writer(myfile)
+        wr.writerow(list_losses)

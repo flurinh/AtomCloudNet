@@ -164,6 +164,8 @@ if __name__ == '__main__':
     # run: module load python_gpu/3.7.1 gcc/6.3.0
     # conda install -c psi4 gcc-5
     # https://scicomp.ethz.ch/wiki/Using_the_batch_system
+    #conda env export | grep -v "^prefix: " > environment.yml
+    #conda env create -f environment.yml
     parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
     parser.add_argument('--run', type=int, default=1)
     args = parser.parse_args()

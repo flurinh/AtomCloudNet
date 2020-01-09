@@ -24,7 +24,7 @@ if __name__ == '__main__':
             # os.system('python sandbox.py --run ' + str(int(ini_id)))
 
     if args.setting == 0:
-        for i in range(num_runs):
+        for i in range(24):
             ini_id = i + 1
             print("Running configuration N°" + str(ini_id).zfill(5))
-            pass
+            os.system('bsub -W 24:00 -R "rusage[mem=16382]" python nnCM.py --run ' + str(ini_id))
