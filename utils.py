@@ -30,4 +30,8 @@ def get_config2(run_id = 1, path = "config/config_"):
     lr = float(parser['SETTING']['lr'])
     epochs = int(parser['SETTING']['epochs'])
     batchsize = int(parser['SETTING']['batchsize'])
-    return model, lr, epochs, batchsize
+    neighborradius = int(parser['SETTING']['neighborradius'])
+    nclouds = int(parser['SETTING']['nclouds'])
+    clouddim = int(parser['SETTING']['clouddim'])
+    resblocks = int(parser['SETTING']['resblocks'])
+    return model, lr, neighborradius, nclouds, clouddim, resblocks, epochs, batchsize

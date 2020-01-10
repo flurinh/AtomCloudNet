@@ -16,20 +16,18 @@ from torch.autograd import Variable
 
 class qm9_loader(Dataset):
     def __init__(self,
-                 feats,
+                 feats=None,
                  limit=np.inf,
                  shuffle=True,
                  path='data/QM9/*.xyz'):
         self.data = {}
         self.partial = True
-
+        # Todo: return features list corresponding to "feats"
         files = glob.glob(pathname=path)
         if shuffle:
             random.shuffle(files)
         counter = 0
         print("Dataloader processing files... Trying to accumulate {} training points.".format(limit))
-        # TODO: only add valid proteins
-
         natom_range = [8, 30]
         max_len = natom_range[1]
         for file_id, file in enumerate(tqdm(files)):

@@ -16,24 +16,26 @@ from functools import partial
 
 
 class se3AtomCloudNet(nn.Module):
-    def __init__(self, device='cpu', nclouds = 1, natoms = 30):
+    def __init__(self, device='cpu', nclouds = 1, natoms = 30, resblocks = 1, cloud_dim=24, neighborradius=2):
         super(se3AtomCloudNet, self).__init__()
-        # Define all the necessary stats of the network
         self.device = device
         self.natoms = natoms
 
         self.emb_dim = 32
-        self.residuals = True
-        self.resblocks = 1
-        self.cloudnorm = True
-        self.feature_collation = 'avg' # pool or else use dense layer
+        if resblocks >= 1:
+            self.residuals = True
+        else:
+            self.residuals = False
+        self.resblocks = resblocks
+        self.cloudnorm = False # Todo: normalization of cloud kernel
+        self.feature_collation = 'mean'  # pool or else use dense layer
         self.nffl = 1
         self.ffl1size = 128
 
         # Cloud specifications
         self.nclouds = nclouds
         self.cloud_order = 3
-        self.cloud_dim = 24
+        self.cloud_dim = cloud_dim
 
         self.radial_layers = 2
         self.sp = rescaled_act.Softplus(beta=1)
@@ -44,26 +46,27 @@ class se3AtomCloudNet(nn.Module):
 
         # Radial Model
         self.number_of_basis = 3
-        self.neighbor_radius = 2
+        self.neighbor_radius = neighborradius
         self.RadialModel = partial(CosineBasisModel,
                                    max_radius=self.neighbor_radius,
                                    number_of_basis=self.number_of_basis,
                                    h=100,
                                    L=self.radial_layers,
                                    act=self.sp)
+
         self.K = partial(se3cnn.point.kernel.Kernel, RadialModel=self.RadialModel, sh=self.sh, normalization='norm')
-        self.NC = partial(NeighborsConvolution, self.K, self.neighbor_radius)
+        # self.NC = partial(NeighborsConvolution, self.K, self.neighbor_radius)
 
         # Cloud layers
         self.clouds = nn.ModuleList()
         cloud_dim = self.emb_dim
         dim_in = self.emb_dim
         dim_out = self.cloud_dim
+        Rs_in = [(dim_in, o) for o in range(1)]
+        Rs_out = [(dim_out, o) for o in range(self.cloud_order)]
 
         for c in range(self.nclouds):
             # Cloud
-            Rs_in = [(dim_in, o) for o in range(1)]
-            Rs_out = [(dim_out, o) for o in range(self.cloud_order)]
             print("Rs_in", Rs_in)
             print("Rs_out", Rs_out)
             """
@@ -83,12 +86,14 @@ class se3AtomCloudNet(nn.Module):
                                           Operation=self.NC))
             """
             cloud_out = self.cloud_dim * (self.cloud_order**2)
-
-            # Cloud residuals
+            # Cloud residuals (should only be applied to final cloud)
             if self.residuals:
-                self.clouds.append(AtomResiduals(in_channel=cloud_out, res_blocks=self.resblocks, device=self.device))
-                res_out = 2 * cloud_out
-            dim_in = res_out
+                if c == (self.nclouds-1):
+                    self.clouds.append(AtomResiduals(in_channel=cloud_out, res_blocks=self.resblocks, device=self.device))
+                    res_out = 2 * cloud_out
+            else:
+                res_out = cloud_out
+            Rs_in = Rs_out
 
         # molecular feature collation (either dense layer or average pooling of atoms)
         self.collate = nn.Linear(self.natoms, 1)
@@ -105,7 +110,6 @@ class se3AtomCloudNet(nn.Module):
         # output activation layer
         self.act = nn.Sigmoid()
 
-
     def forward(self, xyz, features):
         assert xyz.size()[:1] == features.size()[:1], "xyz ({}) and feature size ({}) should match"\
             .format(xyz.size(), features.size())
@@ -114,17 +118,21 @@ class se3AtomCloudNet(nn.Module):
         #print("1", features.size())
         for _, op in enumerate(self.clouds):
             features = op(features, geometry=xyz)
-            #print(str(i+2), str(features.size()))
-        if 'avg' in self.feature_collation:
+            # print("Cloud: ", str(features.size()))
+        #print(features.shape)
+        if 'mean' in self.feature_collation:
             features = features.mean(1)
         elif 'pool' in self.feature_collation: # not tested
             features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
         else:
             features = features.permute(0, 2, 1)
             features = self.collate(features)
+        #print(features.shape)
         features = features.squeeze()
+        #print(features.shape)
         for _, op in enumerate(self.collate2):
             features = F.relu(op(features))
+        #print(features.shape)
         output = self.act(self.outputlayer(features))
         return output
 
@@ -161,17 +169,17 @@ class AtomCloudNet(nn.Module):
         Z = features
         print("Z", Z.shape)
         emb = self.emb(features)
-        print("Embedding:", emb.shape)
+        # print("Embedding:", emb.shape)
         f = self.cloud1(xyz, emb, Z)
-        print("Cloudlevel 1:", f.shape)
+        # print("Cloudlevel 1:", f.shape)
         f = self.atom_res1(f)
-        print("Residual level 1:", f.shape)
+        # print("Residual level 1:", f.shape)
         f = self.cloud2(xyz, f, Z)
-        print("Cloudlevel 2:", f.shape)
+        # print("Cloudlevel 2:", f.shape)
         f = self.atom_res2(f)
-        print("Residual level 2:", f.shape)
+        # print("Residual level 2:", f.shape)
         centroids = get_centroids(xyz, f)
-        print("Centroid data:", centroids.shape)
+        # print("Centroid data:", centroids.shape)
         f = centroids.view(batch_size, -1)
         f = self.drop1(F.relu(self.bn1(self.fc1(f))))
         f = self.drop2(F.relu(self.bn2(self.fc2(f))))
@@ -205,7 +213,6 @@ class AtomCloudFeaturePropagation(nn.Module):
         f = self.cloud1(xyz, emb, Z)
         f = self.atom_res1(f)
         f = self.cloud2(xyz, f, Z)
-        # print(f[0,:2, :6])
         f = F.adaptive_avg_pool2d(f, (1, f.shape[2]))
         f = self.fl(f)
         f = self.act(f).view(f.shape[0], 1)
