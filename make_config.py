@@ -61,13 +61,14 @@ class Config:
             self.parser['SETTING']['model'] = 'ACN'
 
             lr = [0.005]
-            epochs = [50]
+            epochs = [100]
             batchsize = [32, 64]
             neighborradius = [2, 3]
             nclouds = [1, 2]
             clouddim = [6, 12]
             resblocks = [0, 1]
 
+            # Todo: optimize: nffl=1, ffl1size=128, emb_dim=32
             for l in lr:
                 for e in epochs:
                     for b in batchsize:

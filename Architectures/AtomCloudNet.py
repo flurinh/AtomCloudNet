@@ -16,21 +16,22 @@ from functools import partial
 
 
 class se3AtomCloudNet(nn.Module):
-    def __init__(self, device='cpu', nclouds = 1, natoms = 30, resblocks = 1, cloud_dim=24, neighborradius=2):
+    def __init__(self, device='cpu', nclouds = 1, natoms = 30, resblocks = 1, cloud_dim=24, neighborradius=2,
+                 nffl=1, ffl1size=128, emb_dim=32):
         super(se3AtomCloudNet, self).__init__()
         self.device = device
         self.natoms = natoms
 
-        self.emb_dim = 32
+        self.emb_dim = emb_dim
         if resblocks >= 1:
             self.residuals = True
         else:
             self.residuals = False
         self.resblocks = resblocks
-        self.cloudnorm = False # Todo: normalization of cloud kernel
+        self.cloudnorm = False  # Todo: normalization of cloud kernel
         self.feature_collation = 'mean'  # pool or else use dense layer
-        self.nffl = 1
-        self.ffl1size = 128
+        self.nffl = nffl
+        self.ffl1size = ffl1size
 
         # Cloud specifications
         self.nclouds = nclouds
