@@ -11,16 +11,17 @@ if __name__ == '__main__':
         path = 'config_ACN/'
     else:
         path = 'config/'
-
-    num_runs = len([name for name in os.listdir(path)]) - 1 # do not add other config files (except the base one)
+    files = [name for name in os.listdir(path)]
+    num_runs = len(files) - 1 # do not add other config files (except the base one)
     print("Running a total of {} jobs!".format(num_runs))
 
     if args.setting == 1:
-        for i in range(num_runs):
-            ini_id = 101 + i
-            if ini_id > 100:
+        for i, f in enumerate(files):
+            ini_id = 301 + i
+            if ini_id > 300:
                 print("Running configuration N°" + str(ini_id).zfill(5))
                 os.system('bsub -W 24:00 -R "rusage[mem=16382]" python sandbox.py --run ' + str(ini_id))
+                # ssh -NfL localhost:16019:localhost:6019 hidberf@login.leonhard.ethz.ch
             # os.system('bsub -W 24:00 python sandbox.py --run ' + str(ini_id))
             # os.system('python sandbox.py --run ' + str(int(ini_id)))
 
