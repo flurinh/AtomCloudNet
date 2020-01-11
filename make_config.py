@@ -65,7 +65,7 @@ class Config:
             batchsize = [16]
             neighborradius = [3, 4]
             nclouds = [1, 3]
-            clouddim = [4, 10]
+            clouddim = [4, 10, 16]
             resblocks = [0, 2]
             nffl = [2]
             ffl1size = [256]

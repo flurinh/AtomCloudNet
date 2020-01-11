@@ -42,8 +42,9 @@ class qm9_loader(Dataset):
                     prots_ids = np.asarray(list(map(float, data.prots[1])))
                     partial = np.asarray(list(map(float, data.partial)))
 
-                    #
-                    xyz = np.random.rand(natom_range[1], 3)
+                    # the padding points are out of reach for the neighborhoods of the molecule!
+                    xyz = np.full((natom_range[1], 3), 20)
+                    # xyz = np.random.rand(natom_range[1], 3)
                     Z = np.zeros((natom_range[1], 1))
                     padded_partial = np.zeros((natom_range[1], 1))
                     padded_prot_ids = np.zeros((natom_range[1], 1))
