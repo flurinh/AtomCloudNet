@@ -18,8 +18,8 @@ if __name__ == '__main__':
 
     if args.setting == 1:
         for i, f in enumerate(files):
-            ini_id = 501 + i
-            if ini_id > 500:
+            ini_id = 701 + i
+            if ini_id > 700:
                 print("Running configuration N°" + str(ini_id).zfill(5))
                 os.system('bsub -W 24:00 -R "rusage[mem=16382]" python sandbox.py --run ' + str(ini_id))
                 time.sleep(1)

@@ -57,19 +57,19 @@ class Config:
             config_file = path + ".ini"
             self.parser = ConfigParser()
             self.parser.read(config_file)
-            self.idx = 500
+            self.idx = 700
             self.parser['SETTING']['model'] = 'ACN'
 
-            lr = [0.001, 0.0005]
+            lr = [0.001]
             epochs = [100]
-            batchsize = [16]
-            neighborradius = [3, 4]
-            nclouds = [1, 3]
-            clouddim = [4, 10, 16]
-            resblocks = [0, 2]
+            batchsize = [16, 32]
+            neighborradius = [1.5, 3, 5]
+            nclouds = [1]
+            clouddim = [4, 16, 24]
+            resblocks = [0]
             nffl = [2]
             ffl1size = [256]
-            emb_dim = [16, 64]
+            emb_dim = [32]
 
             # Todo: optimize: nffl=1, ffl1size=128, emb_dim=32
             for l in lr:

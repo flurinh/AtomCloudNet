@@ -39,7 +39,7 @@ class se3AtomCloudNet(nn.Module):
         self.cloud_dim = cloud_dim
 
         self.radial_layers = 2
-        self.sp = rescaled_act.Softplus(beta=1)
+        self.sp = rescaled_act.Softplus(beta=5)
         self.sh = se3cnn.SO3.spherical_harmonics_xyz
 
         # Embedding
