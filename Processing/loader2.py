@@ -68,7 +68,7 @@ class qm9_loader(Dataset):
                     elect_spa_ext = float(properties[10])
                     zeropointvib = float(properties[11])
                     u0 = float(properties[12])
-                    Urt = float(properties[13]) / (-621)
+                    Urt = (float(properties[13]) + 200) / (-600)
                     Hrt = float(properties[14])
                     Grt = float(properties[15])
                     heatcap = float(properties[16])

@@ -57,19 +57,19 @@ class Config:
             config_file = path + ".ini"
             self.parser = ConfigParser()
             self.parser.read(config_file)
-            self.idx = 300
+            self.idx = 500
             self.parser['SETTING']['model'] = 'ACN'
 
-            lr = [0.001]
+            lr = [0.001, 0.0005]
             epochs = [100]
-            batchsize = [32]
-            neighborradius = [1, 2]
-            nclouds = [2, 4, 6]
-            clouddim = [6, 12]
+            batchsize = [16]
+            neighborradius = [3, 4]
+            nclouds = [1, 2, 3]
+            clouddim = [6]
             resblocks = [0, 1]
             nffl = [2]
             ffl1size = [512]
-            emb_dim = [32]
+            emb_dim = [16]
 
             # Todo: optimize: nffl=1, ffl1size=128, emb_dim=32
             for l in lr:
@@ -102,7 +102,7 @@ class Config:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
-    parser.add_argument('--setting', type=int, default=0, help='Please specify setting:\n'
+    parser.add_argument('--setting', type=int, default=1, help='Please specify setting:\n'
                                                                '   0 : Testing purposes\n')
     args = parser.parse_args()
     Config(setting=args.setting)

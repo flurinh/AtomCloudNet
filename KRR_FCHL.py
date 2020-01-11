@@ -29,18 +29,18 @@ if __name__ == "__main__":
 
     print("\n -> load binding energies")
 
-    data = get_energies("../data/trainUrt.txt")
-    data2 = get_energies("../data/testUrt.txt")
+    data = get_energies("data/trainUrt.txt")
+    data2 = get_energies("data/testUrt.txt")
     mols = []
     mols_test = []
     for xyz_file in sorted(data.keys()):
         mol = qml.Compound()
-        mol.read_xyz("../data/QM9Train/" + xyz_file)
+        mol.read_xyz("data/QM9Train/" + xyz_file)
         mol.properties = data[xyz_file]
         mols.append(mol)
     for xyz_file in sorted(data2.keys()):
         mol = qml.Compound()
-        mol.read_xyz("../data/QM9Test/" + xyz_file)
+        mol.read_xyz("data/QM9Test/" + xyz_file)
         mol.properties = data2[xyz_file]
         mols_test.append(mol)
 
@@ -50,9 +50,9 @@ if __name__ == "__main__":
     for mol in tqdm(mols_test):
         mol.generate_fchl_representation()
 
-    N = [100, 1000, 2000]
+    N = [100, 1000, 2000, 5000, 10000]
     nModels = 10
-    total = 2000
+    total = 10000
 
     sigma   =  [0.2*2**i for i in range(14, 17)]
 
@@ -62,10 +62,29 @@ if __name__ == "__main__":
     Yprime  = np.asarray([mol.properties for mol in mols])
     Ytest  = np.asarray([mol.properties for mol in mols_test])
 
+    np.save("data/krr/trainingFCHL", X)
+    np.save("data/krr/testFCHL", X_test)
+
+    """X = np.asarray(X[:1000])
+    X_test = np.asarray(X_test[:1000])
+
+    Yprime = np.asarray(Yprime[:1000])
+    Ytest = np.asarray(Ytest[:1000])"""
+
+    """print(len(X))
+    print(len(X_test))"""
+
     print("\n -> calculating kernels")
     K = get_local_kernels(X, X, sigma, cut_distance=10.0)
     K_test = get_local_kernels(X, X_test, sigma, cut_distance=10.0)
 
+    np.save("data/krr/trainingKernel", K)
+    np.save("data/krr/testKernel", K_test)
+
+    """print(K)
+    print(K.shape)
+    print(K_test)
+    print(K_test.shape)"""
     random.seed(667)
 
     print("\n -> calculating cross validation and predictions")
