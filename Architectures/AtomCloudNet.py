@@ -132,7 +132,7 @@ class se3AtomCloudNet(nn.Module):
         features = features.squeeze()
         #print(features.shape)
         for _, op in enumerate(self.collate2):
-            features = F.relu(op(features))
+            features = F.leaky_relu(op(features))
         #print(features.shape)
         output = self.act(self.outputlayer(features))
         return output

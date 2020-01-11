@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 import argparse
+import time
 import os
 
 
@@ -21,6 +22,7 @@ if __name__ == '__main__':
             if ini_id > 500:
                 print("Running configuration N°" + str(ini_id).zfill(5))
                 os.system('bsub -W 24:00 -R "rusage[mem=16382]" python sandbox.py --run ' + str(ini_id))
+                time.sleep(1)
                 # ssh -NfL localhost:16019:localhost:6019 hidberf@login.leonhard.ethz.ch
             # os.system('bsub -W 24:00 python sandbox.py --run ' + str(ini_id))
             # os.system('python sandbox.py --run ' + str(int(ini_id)))

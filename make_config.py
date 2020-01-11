@@ -64,12 +64,12 @@ class Config:
             epochs = [100]
             batchsize = [16]
             neighborradius = [3, 4]
-            nclouds = [1, 2, 3]
-            clouddim = [6]
-            resblocks = [0, 1]
+            nclouds = [1, 3]
+            clouddim = [4, 10]
+            resblocks = [0, 2]
             nffl = [2]
-            ffl1size = [512]
-            emb_dim = [16]
+            ffl1size = [256]
+            emb_dim = [16, 64]
 
             # Todo: optimize: nffl=1, ffl1size=128, emb_dim=32
             for l in lr:
