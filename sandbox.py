@@ -84,7 +84,8 @@ class ACN:
         model = se3AtomCloudNet(device=self.device, nclouds = self.hyperparams[3], natoms = 30,
                                 resblocks = self.hyperparams[5], cloud_dim=self.hyperparams[4],
                                 neighborradius=self.hyperparams[2],
-                                nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10]
+                                nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
+                                cloudord=self.hyperparams[11]
                                 ).float()
         model.train()
         criterion = nn.MSELoss()
