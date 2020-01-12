@@ -53,7 +53,7 @@ class ACN:
         self.ngpus = 0
 
         feats = ['prot', 'ph']
-        train_data = qm9_loader(feats=feats, limit=100, path=self.train_path + '/*.xyz')
+        train_data = qm9_loader(feats=feats, limit=10000, path=self.train_path + '/*.xyz')
         # test_data = qm9_loader(feats=feats, limit=np.inf, path=self.test_path + '/*.xyz')
         print("\nTotal number of training samples assembled:", train_data.__len__())
 

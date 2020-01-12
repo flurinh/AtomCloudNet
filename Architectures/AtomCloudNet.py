@@ -307,6 +307,7 @@ class se3ACN(nn.Module):
 
         for c in range(self.nclouds):
             # Cloud
+            print("Cloud {}".format(c))
             print("Rs_in", Rs_in)
             print("Rs_out", Rs_out)
             self.clouds.append(NeighborsConvolution(self.K, Rs_in, Rs_out, self.neighbor_radius))
@@ -359,7 +360,7 @@ class se3ACN(nn.Module):
         for _, op in enumerate(self.clouds):
             features = op(features, geometry=xyz)
             if self.cloud_res:
-                print("storing features:", features.size())
+                # print("storing features:", features.size())
                 feature_list.append(features)
             #print("Cloud: ", str(features.size()))
 

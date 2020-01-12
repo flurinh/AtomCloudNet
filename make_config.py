@@ -57,7 +57,7 @@ class Config:
             config_file = path + ".ini"
             self.parser = ConfigParser()
             self.parser.read(config_file)
-            self.idx = 900
+            self.idx = 1100
             self.parser['SETTING']['model'] = 'ACN'
 
             lr = [0.0005]
