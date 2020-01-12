@@ -54,7 +54,7 @@ class ACN:
         self.ngpus = 0
 
         feats = ['prot', 'ph']
-        train_data = qm9_loader(feats=feats, limit=np.inf, path=self.train_path + '/*.xyz')
+        train_data = qm9_loader(feats=feats, limit=10000, path=self.train_path + '/*.xyz')
         # test_data = qm9_loader(feats=feats, limit=np.inf, path=self.test_path + '/*.xyz')
         print("\nTotal number of training samples assembled:", train_data.__len__())
 
@@ -110,7 +110,7 @@ class ACN:
             tot_loss = 0
             model.train()
             for i, (xyz, prot_ids, two, three, urt) in enumerate(train_pbar, start=1):
-                train_step += 1
+                train_step += self.batch_size
                 xyz = xyz.to(self.device)
                 feat = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
                 prediction = model(xyz, feat)
@@ -138,7 +138,7 @@ class ACN:
             tot_loss = 0
             model.eval()
             for i, (xyz, Z, prot_ids, partial, urt) in enumerate(val_pbar, start=1):
-                val_step += 1
+                val_step += self.batch_size
                 xyz = xyz.to(self.device)
                 feat = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
                 prediction = model(xyz, feat)
@@ -162,47 +162,89 @@ class ACN:
                 torch.save(model.state_dict(), self.save_path + '.pkl')
                 min_loss = tot_loss
 
-    def train_atomic_model(self):
-        history = []
-        model = AtomCloudFeaturePropagation(device=self.device).float()
+
+    def train_molecular_modelK(self):
+        model = se3AtomCloudNetK(device=self.device, nclouds = self.hyperparams[3], natoms = 30,
+                                 resblocks = self.hyperparams[5], cloud_dim=self.hyperparams[4],
+                                 neighborradius=self.hyperparams[2],
+                                 nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
+                                 cloudord=self.hyperparams[11]
+                                 ).float()
         model.train()
         criterion = nn.MSELoss()
-        opt = torch.optim.Adam(model.parameters(), lr=1e-3)
-        opt.zero_grad()
+        opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1])
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
-
-        if self.verbose > 0:
-            print(model)
-            print("Number trainable parameters:", params)
-
-        if torch.cuda.device_count() > 1:
-            self.ngpus = torch.cuda.device_count()
-            print("Let's use" + str(self.ngpus) + "GPUs!")
-            model = torch.nn.DataParallel(model)
+        print(model)
+        print("Number trainable parameters:", params)
+        torch.autograd.set_detect_anomaly(True)
         model.to(self.device)
 
-        torch.autograd.set_detect_anomaly(True)
-        pbar = tqdm(self.train_loader)
+        train_step = 0
+        val_step = 0
+        train_pbar = tqdm(self.train_loader)
+        val_pbar = tqdm(self.val_loader)
+
+        min_loss = np.inf
+
         for _ in trange(self.nepochs):
+            # TRAINING
             tot_loss = 0
-            for i, (xyz, Z, prot_ids, partial, urt) in enumerate(pbar, start=1):
+            model.train()
+            for i, (xyz, prot_ids, features, urt) in enumerate(train_pbar, start=1):
+                prot_ids.type(torch.float)
+                feat = features.to(self.device)
+                train_step += self.batch_size
+                xyz = xyz.to(self.device)
+                prediction = model(xyz, feat)
+                loss = criterion(prediction, urt.to(self.device))
                 opt.zero_grad()
-                xyz = xyz.permute(0, 2, 1).to(self.device)
-                feat = prot_ids.view(xyz.shape[0], xyz.shape[2]).to(self.device)
-                prediction = model(feat, xyz)
+                loss.backward()
+                opt.step()
+                loss_ = torch.sqrt(loss).cpu().item()
+                tot_loss += loss_
+                avg_loss = tot_loss / i
+                ex_pred = prediction[0].cpu().detach().numpy().round(3)
+                ex_target = urt[0].cpu().detach().numpy().round(3)
+                train_pbar.set_description("epoch-avg-loss::{}  "
+                                           "--------  loss::{}  "
+                                           "--------  prediction::{}  "
+                                           "--------  target::{}  "
+                                           .format(avg_loss, loss_, ex_pred,
+                                                   ex_target))
+                self.train_writer.add_scalar('train__loss', loss_, train_step)
+                if train_step % 1000 == 0:
+                    self.train_writer.add_text('train_prediction', str(ex_pred), train_step)
+                    self.train_writer.add_text('train_target', str(ex_target), train_step)
+
+            # VALIDATION
+            tot_loss = 0
+            model.eval()
+            for i, (xyz, prot_ids, features, urt) in enumerate(val_pbar, start=1):
+                prot_ids.type(torch.float)
+                feat = features.to(self.device)
+                val_step += self.batch_size
+                prediction = model(xyz, feat)
                 loss = criterion(prediction, urt.to(self.device))
                 loss_ = torch.sqrt(loss).cpu().item()
                 tot_loss += loss_
                 avg_loss = tot_loss / i
-                pbar.set_description("validation-avg-loss::{}  "
-                                     "--------  loss::{}  "
-                                     "--------  prediction::{}  "
-                                     "--------  target::{}  "
-                                     .format(avg_loss, loss_, prediction[0].cpu().detach().numpy(), urt[0].cpu().detach().numpy()))
-                loss.backward()
-                opt.step()
-        return model, history
+                ex_pred = prediction[0].cpu().detach().numpy().round(3)
+                ex_target = urt[0].cpu().detach().numpy().round(3)
+                val_pbar.set_description("training-avg-loss::{}  "
+                                         "--------  loss::{}  "
+                                         "--------  prediction::{}  "
+                                         "--------  target::{}  "
+                                         .format(avg_loss, loss_, ex_pred,
+                                                 ex_target))
+                self.val_writer.add_scalar('val__loss', loss_, val_step)
+                if val_step % 1000 == 0:
+                    self.val_writer.add_text('val_prediction', str(ex_pred), val_step)
+                    self.val_writer.add_text('val_target', str(ex_target), val_step)
+            if tot_loss < min_loss:
+                torch.save(model.state_dict(), self.save_path + '.pkl')
+                min_loss = tot_loss
+
 
 
 if __name__ == '__main__':
@@ -213,7 +255,10 @@ if __name__ == '__main__':
     #conda env create -f environment.yml
     parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
     parser.add_argument('--run', type=int, default=109)
+    parser.add_argument('--who', type=int, default=0) # 0 = Kenneth, 1 = Flurin
     args = parser.parse_args()
     net = ACN(run_id=args.run)
-    if net.type == 'ACN':
+    if args.who == 0:
+        net.train_molecular_modelK()
+    else:
         net.train_molecular_model()
