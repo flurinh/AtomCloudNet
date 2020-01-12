@@ -6,6 +6,7 @@ from math import sqrt
 from sklearn.metrics import mean_squared_error
 from qml.math import cho_solve
 from qml.representations import *
+from qml.kernels import laplacian_kernel, gaussian_kernel
 from qml.fchl import get_local_kernels
 from tqdm import tqdm
 
@@ -33,28 +34,30 @@ if __name__ == "__main__":
     data2 = get_energies("data/testUrt.txt")
     mols = []
     mols_test = []
-    for xyz_file in sorted(data.keys()):
+    for xyz_file in tqdm(sorted(data.keys())):
         mol = qml.Compound()
         mol.read_xyz("data/QM9Train/" + xyz_file)
         mol.properties = data[xyz_file]
         mols.append(mol)
-    for xyz_file in sorted(data2.keys()):
+    for xyz_file in tqdm(sorted(data2.keys())):
         mol = qml.Compound()
         mol.read_xyz("data/QM9Test/" + xyz_file)
         mol.properties = data2[xyz_file]
         mols_test.append(mol)
 
-    print("\n -> generate FCHL representation")
+    mbtypes = get_slatm_mbtypes([mol.nuclear_charges for mol in mols + mols_test])
+
+    print("\n -> generate representation")
     for mol in tqdm(mols):
-        mol.generate_fchl_representation()
+        mol.generate_slatm(mbtypes, local=False)
     for mol in tqdm(mols_test):
-        mol.generate_fchl_representation()
+        mol.generate_slatm(mbtypes, local=False)
 
-    N = [100, 1000, 2000, 5000, 10000]
+    N = [100, 1000, 2000, 5000, 9986]
     nModels = 10
-    total = 10000
+    total = 9986
 
-    sigma   =  [0.2*2**i for i in range(14, 17)]
+    sigmas   =  [0.2*2**i for i in range(8, 22)]
 
     X = np.asarray([mol.representation for mol in mols])
     X_test = np.asarray([mol.representation for mol in mols_test])
@@ -62,46 +65,28 @@ if __name__ == "__main__":
     Yprime  = np.asarray([mol.properties for mol in mols])
     Ytest  = np.asarray([mol.properties for mol in mols_test])
 
-    np.save("data/krr/trainingFCHL", X)
-    np.save("data/krr/testFCHL", X_test)
-
-    """X = np.asarray(X[:1000])
-    X_test = np.asarray(X_test[:1000])
-
-    Yprime = np.asarray(Yprime[:1000])
-    Ytest = np.asarray(Ytest[:1000])"""
-
-    """print(len(X))
-    print(len(X_test))"""
+    """np.save("data/krr/trainingFCHL", X)
+    np.save("data/krr/testFCHL", X_test)"""
 
     print("\n -> calculating kernels")
-    K = get_local_kernels(X, X, sigma, cut_distance=10.0)
-    K_test = get_local_kernels(X, X_test, sigma, cut_distance=10.0)
 
-    np.save("data/krr/trainingKernel", K)
-    np.save("data/krr/testKernel", K_test)
-
-    """print(K)
-    print(K.shape)
-    print(K_test)
-    print(K_test.shape)"""
     random.seed(667)
 
     print("\n -> calculating cross validation and predictions")
-    for j in tqdm(range(len(sigma))):
+    for j in tqdm(range(len(sigmas))):
+
+        K = gaussian_kernel(X, X, sigmas[j])
+        K_test = gaussian_kernel(X, X_test, sigmas[j])
 
         for train in N:
-            maes = []
             test = total - train
+            maes = []
             for i in range(nModels):
                 split = list(range(total))
                 random.shuffle(split)
 
                 training_index = split[:train]
                 test_index = split[-test:]
-
-                # print(len(training_index))
-                # print(len(test_index))
 
                 Y = Yprime[training_index]
                 Ys = Yprime[test_index]
@@ -118,4 +103,16 @@ if __name__ == "__main__":
                 rms = sqrt(mean_squared_error(Yss, Ytest))
             s = np.std(maes) / np.sqrt(nModels)
 
-            print(str(sigma[j]) + "\t" + str(train) + "\t" + str(sum(maes) / len(maes)) + "\t" + str(s) + "\t" + str(rms))
+            print(str(sigmas[j]) + "\t" + str(train) + "\t" + str(sum(maes) / len(maes)) + "\t" + str(s) + "\t" + str(rms))
+
+
+            """
+            Laplacian:
+            104857.6        100     13.055461614685186      0.24980843750116236     20.357427738220657
+            104857.6        1000    2.1008683778400554      0.06303591967956731     4.279855452511398
+            104857.6        2000    1.1027139753619954      0.031598150680920395    2.5900007922535506
+            104857.6        5000    0.4955648674322418      0.005659537462348401    1.9015394211428545
+            104857.6        9986    0.29148852202565034     3.3400687914416667e-12  1.4790519369857962
+            Gaussian:
+            
+            """
