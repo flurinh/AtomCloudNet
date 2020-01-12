@@ -64,12 +64,12 @@ class Config:
             epochs = [100]
             batchsize = [16]
             neighborradius = [4]
-            nclouds = [1]
+            nclouds = [1, 2]
             clouddim = [4]
             cloudord = [3, 5]
             resblocks = [2, 4]
             nffl = [2]
-            ffl1size = [256, 1024]
+            ffl1size = [128, 256]
             emb_dim = [16]
 
             # Todo: optimize: nffl=1, ffl1size=128, emb_dim=32
@@ -105,7 +105,6 @@ class Config:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
-    parser.add_argument('--setting', type=int, default=1, help='Please specify setting:\n'
-                                                               '   0 : Testing purposes\n')
+    parser.add_argument('--setting', type=int, default=1)
     args = parser.parse_args()
     Config(setting=args.setting)
