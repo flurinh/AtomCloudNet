@@ -108,7 +108,7 @@ class ACN:
             # TRAINING
             tot_loss = 0
             model.train()
-            for i, (xyz, Z, prot_ids, partial, urt) in enumerate(train_pbar, start=1):
+            for i, (xyz, prot_ids, two, three, urt) in enumerate(train_pbar, start=1):
                 train_step += 1
                 xyz = xyz.to(self.device)
                 feat = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)

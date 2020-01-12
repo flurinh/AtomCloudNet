@@ -1,6 +1,8 @@
 import glob
 from tqdm import trange, tqdm
+from scipy.spatial.distance import pdist, squareform
 import numpy as np
+import itertools
 import random
 
 from Processing.utils import *
@@ -29,7 +31,6 @@ class qm9_loader(Dataset):
         counter = 0
         print("Dataloader processing files... Trying to accumulate {} training points.".format(limit))
         natom_range = [8, 30]
-        max_len = natom_range[1]
         for file_id, file in enumerate(tqdm(files)):
             if counter < limit:
                 data = qm9_xyz(file)
@@ -56,6 +57,9 @@ class qm9_loader(Dataset):
                             for j in range(3):
                                 xyz[i, j] = coords[i, j]
 
+                    two = self.two_body(xyz, Z)
+                    # three = self.two_body(xyz, Z)
+
                     atoms = data.atomtypes
                     properties = data.properties[0]
                     rotcon1 = float(properties[2])
@@ -76,6 +80,7 @@ class qm9_loader(Dataset):
 
                     data_dict = {'natoms': natoms,
                                  'Z': Z,
+                                 'two': two,
                                  'prots_ids': padded_prot_ids,
                                  'partial': padded_partial,
                                  'xyz': xyz,
@@ -99,18 +104,37 @@ class qm9_loader(Dataset):
             else:
                 break
 
+    def two_body(self, xyz, Z, norm=False):
+        dists = squareform(pdist(xyz, 'euclidean', p=2, w=None, V=None, VI=None))
+        dists = dists ** 6
+        zz = np.outer(Z, Z)
+        out = np.asarray([dists[i, j] / zz[i, j] if zz[i, j] != 0 else 0
+                          for i, j in itertools.product(range(30), range(30))])
+        mask = np.where(out == 0)
+        out[mask] = 1
+        # Todo: Normalization
+        for i in range(out.shape[0]):
+            if norm:
+                sigma = 5
+                mu = 50
+                out[i] = 1 / (sigma * np.sqrt(mu * 2)) * np.e ** -(out[i] ** 2)
+        final = 1 / out
+        final[mask] = 0
+        final = final.reshape((30, 30))
+        return final.sum(1)
+
+    def three_body(self, xyz, Z):
+        pass
+
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         prots = self.data[str(idx)]['prots_ids']
-        Z = self.data[str(idx)]['Z']
-        if self.partial:
-            pass
-
+        two = self.data[str(idx)]['two']
         return torch.Tensor(self.data[str(idx)]['xyz']), \
-               torch.LongTensor(Z), \
                torch.LongTensor(prots), \
-               torch.Tensor(self.data[str(idx)]['partial']), \
+               torch.Tensor(two), \
+               torch.Tensor(two), \
                torch.Tensor([self.data[str(idx)]['Urt']])
 
