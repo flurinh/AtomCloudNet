@@ -131,11 +131,12 @@ class qm9_loader(Dataset):
 
     def __getitem__(self, idx):
         prots = self.data[str(idx)]['prots_ids']
+        Z = self.data[str(idx)]['Z']
         two = self.data[str(idx)]['two'].reshape(30, 1)
         # three
         stack = np.concatenate([prots, two, two], axis=1)
         return torch.Tensor(self.data[str(idx)]['xyz']), \
-               torch.LongTensor(prots), \
+               torch.LongTensor(Z), \
                torch.Tensor(stack), \
                torch.Tensor([self.data[str(idx)]['Urt']])
 
