@@ -6,7 +6,7 @@ import os
 
 def get_config(run_id = 1, path = "config/config_"):
     config_file = path + str(run_id).zfill(5) + ".ini"
-    print("Loading config files.. " + config_file)
+    print("Loading config file.. " + config_file)
     parser = ConfigParser()
     parser.read(config_file)
     model = parser['SETTING']['model']
@@ -23,7 +23,7 @@ def get_config(run_id = 1, path = "config/config_"):
 
 def get_config2(run_id = 1, path = "config/config_"):
     config_file = path + str(run_id).zfill(5) + ".ini"
-    print("Loading config files.. " + config_file)
+    print("Loading config file.. " + config_file)
     parser = ConfigParser()
     parser.read(config_file)
     model = parser['SETTING']['model']

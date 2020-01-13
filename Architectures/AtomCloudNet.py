@@ -307,13 +307,14 @@ class se3ACN(nn.Module):
 
         for c in range(self.nclouds):
             # Cloud
+            print("Cloud {}".format(c))
             print("Rs_in", Rs_in)
             print("Rs_out", Rs_out)
             self.clouds.append(NeighborsConvolution(self.K, Rs_in, Rs_out, self.neighbor_radius))
             Rs_in = Rs_out
 
         if self.cloud_res:
-            cloud_out = self.cloud_dim * (self.cloud_order ** 2) * self.nclouds + self.emb_dim
+            cloud_out = self.cloud_dim * (self.cloud_order ** 2) * self.nclouds
         else:
             cloud_out = self.cloud_dim * (self.cloud_order ** 2)
         # Cloud residuals (should only be applied to final cloud)
@@ -326,6 +327,7 @@ class se3ACN(nn.Module):
 
         # MOLECULAR FEATURE COLLATION
         # (either molecular cloud or mean/average pooling of each features over all atoms)
+        """
         max_radius = 10
         R = partial(CosineBasisModel, max_radius=max_radius, number_of_basis=10, h=100, L=2, act=relu)
         K = partial(Kernel, RadialModel=R)
@@ -334,14 +336,15 @@ class se3ACN(nn.Module):
         print("Rs_in", Rs_in)
         print("Rs_out", Rs_out)
         self.molecular_cloud = se3cnn.point.operations.Convolution(K, Rs_in, Rs_out)
+        """
 
         # passing molecular features through output layer
         self.collate = nn.ModuleList()
         in_shape = res_out
         for _ in range(self.nffl):
             out_shape = self.ffl1size // (_ + 1)
-            self.collate2.append(nn.Linear(in_shape, out_shape))
-            self.collate2.append(nn.BatchNorm1d(out_shape))
+            self.collate.append(nn.Linear(in_shape, out_shape))
+            self.collate.append(nn.BatchNorm1d(out_shape))
             in_shape = out_shape
         self.outputlayer = nn.Linear(in_shape, 1)
         # output activation layer
@@ -355,21 +358,23 @@ class se3ACN(nn.Module):
         #print("1", features.size())
         feature_list = []
         for _, op in enumerate(self.clouds):
-            if self.cloud_res:
-                feature_list.append(features)
             features = op(features, geometry=xyz)
-            # print("Cloud: ", str(features.size()))
+            if self.cloud_res:
+                # print("storing features:", features.size())
+                feature_list.append(features)
+            #print("Cloud: ", str(features.size()))
 
         if self.cloud_res:
             features = torch.cat(feature_list, dim=2)
-            print("concatenated features:", features.size())
+            #print("concatenated features:", features.size())
 
         if self.final_res:
             features = self.cloud_residual(features)
+            #print("final cloud residual:", features.size())
 
         if 'mean' in self.feature_collation:
             features = features.mean(1)
-        elif 'pool' in self.feature_collation: # not tested
+        elif 'pool' in self.feature_collation:  # not tested
             features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
         else:
             features = self.molecular_cloud(features)

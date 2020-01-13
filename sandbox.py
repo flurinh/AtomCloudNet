@@ -2,7 +2,6 @@ from Architectures.AtomCloudNet import *
 from Processing.loader2 import *
 from utils import *
 
-
 from tqdm import tqdm, trange
 from configparser import ConfigParser
 import numpy as np
@@ -80,13 +79,23 @@ class ACN:
 
         self.nepochs = self.hyperparams[6]
 
-    def train_molecular_model(self):
-        model = se3AtomCloudNet(device=self.device, nclouds = self.hyperparams[3], natoms = 30,
-                                resblocks = self.hyperparams[5], cloud_dim=self.hyperparams[4],
-                                neighborradius=self.hyperparams[2],
-                                nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
-                                cloudord=self.hyperparams[11]
-                                ).float()
+    def train_molecular_model(self, type):
+        if type == 1:
+            model = se3ACN(device=self.device, nclouds=self.hyperparams[3], natoms=30,
+                           resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
+                           neighborradius=self.hyperparams[2],
+                           nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
+                           cloudord=self.hyperparams[11]
+                           ).float()
+        else:
+            model = se3AtomCloudNet(device=self.device, nclouds=self.hyperparams[3], natoms=30,
+                                    resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
+                                    neighborradius=self.hyperparams[2],
+                                    nffl=self.hyperparams[8], ffl1size=self.hyperparams[9],
+                                    emb_dim=self.hyperparams[10],
+                                    cloudord=self.hyperparams[11]
+                                    ).float()
+
         model.train()
         criterion = nn.MSELoss()
         opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1])
@@ -109,7 +118,7 @@ class ACN:
             # TRAINING
             tot_loss = 0
             model.train()
-            for i, (xyz, prot_ids, two, three, urt) in enumerate(train_pbar, start=1):
+            for i, (xyz, prot_ids, features, urt) in enumerate(train_pbar, start=1):
                 train_step += self.batch_size
                 xyz = xyz.to(self.device)
                 feat = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
@@ -137,7 +146,7 @@ class ACN:
             # VALIDATION
             tot_loss = 0
             model.eval()
-            for i, (xyz, Z, prot_ids, partial, urt) in enumerate(val_pbar, start=1):
+            for i, (xyz, prot_ids, features, urt) in enumerate(val_pbar, start=1):
                 val_step += self.batch_size
                 xyz = xyz.to(self.device)
                 feat = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
@@ -162,10 +171,9 @@ class ACN:
                 torch.save(model.state_dict(), self.save_path + '.pkl')
                 min_loss = tot_loss
 
-
     def train_molecular_modelK(self):
-        model = se3AtomCloudNetK(device=self.device, nclouds = self.hyperparams[3], natoms = 30,
-                                 resblocks = self.hyperparams[5], cloud_dim=self.hyperparams[4],
+        model = se3AtomCloudNetK(device=self.device, nclouds=self.hyperparams[3], natoms=30,
+                                 resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
                                  neighborradius=self.hyperparams[2],
                                  nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
                                  cloudord=self.hyperparams[11]
@@ -246,19 +254,19 @@ class ACN:
                 min_loss = tot_loss
 
 
-
 if __name__ == '__main__':
     # run: module load python_gpu/3.7.1 gcc/6.3.0
     # conda install -c psi4 gcc-5
     # https://scicomp.ethz.ch/wiki/Using_the_batch_system
-    #conda env export | grep -v "^prefix: " > environment.yml
-    #conda env create -f environment.yml
+    # conda env export | grep -v "^prefix: " > environment.yml
+    # conda env create -f environment.yml
     parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
     parser.add_argument('--run', type=int, default=109)
-    parser.add_argument('--who', type=int, default=0) # 0 = Kenneth, 1 = Flurin
+    parser.add_argument('--who', type=int, default=0)  # 0 = Kenneth, 1 = Flurin
+    parser.add_argument('--type', type=int, default=0)  # 0 = AtomCloudNet, 1 = ACN (cloud residuals)
     args = parser.parse_args()
     net = ACN(run_id=args.run)
     if args.who == 0:
         net.train_molecular_modelK()
     else:
-        net.train_molecular_model()
+        net.train_molecular_model(args.type)
