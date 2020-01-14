@@ -69,7 +69,7 @@ class Config:
             cloudord = [3]
             resblocks = [2]
             nffl = [2]
-            ffl1size = [128]
+            ffl1size = [256]
             emb_dim = [16]
 
             # Todo: optimize: nffl=1, ffl1size=128, emb_dim=32

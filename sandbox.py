@@ -52,8 +52,8 @@ class ACN:
         self.batch_size = self.hyperparams[7]
         self.ngpus = 0
 
-        train_data = qm9_loader(limit=10000, path=self.train_path + '/*.xyz', type=self.type)
-        # test_data = qm9_loader(limit=np.inf, path=self.test_path + '/*.xyz')
+        train_data = qm9_loader(limit=10000, path=self.train_path + '/*.xyz', type=self.type, init = True)
+        # test_data = qm9_loader(limit=np.inf, path=self.test_path + '/*.xyz', type=self.type, init = True)
         print("\nTotal number of training samples assembled:", train_data.__len__())
 
         num_train = len(train_data)

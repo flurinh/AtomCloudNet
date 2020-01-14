@@ -21,7 +21,7 @@ if __name__ == '__main__':
             ini_id = 1201 + i
             if ini_id > 1200:
                 print("Running configuration N°" + str(ini_id).zfill(5))
-                os.system('bsub -W 72:00 -R "rusage[mem=16382]" python sandbox.py --run ' + str(ini_id))
+                os.system('bsub -W 48:00 -R "rusage[mem=16382]" python sandbox.py --run ' + str(ini_id))
                 time.sleep(1)
                 # ssh -NfL localhost:16019:localhost:6019 hidberf@login.leonhard.ethz.ch
                 # os.system('bsub -W 24:00 python sandbox.py --run ' + str(ini_id))

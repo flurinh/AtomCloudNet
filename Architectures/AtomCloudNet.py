@@ -269,7 +269,8 @@ class se3ACN(nn.Module):
 
         features = features.squeeze()
         for _, op in enumerate(self.collate):
-            features = F.leaky_relu(op(features))
+            # features = F.leaky_relu(op(features))
+            features = F.softplus(op(features))
         return self.act(self.outputlayer(features))
 
 

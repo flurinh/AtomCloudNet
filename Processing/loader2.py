@@ -6,6 +6,11 @@ import numpy as np
 import itertools
 import random
 
+try:
+    import cPickle as pickle
+except ImportError:  # python 3.x
+    import pickle
+
 from Processing.utils import *
 
 import torch
@@ -19,95 +24,116 @@ from torch.autograd import Variable
 
 class qm9_loader(Dataset):
     def __init__(self,
-                 limit=np.inf,
+                 limit=10000,
                  shuffle=True,
                  path='data/QM9/*.xyz',
-                 type = 1):
+                 type = 1,
+                 scaled = True,
+                 init = False):
+        self.limit = limit
         self.data = {}
         self.type = type
         self.partial = True
-        # Todo: return features list corresponding to "feats"
-        files = glob.glob(pathname=path)
-        if shuffle:
-            random.shuffle(files)
-        counter = 0
-        print("Dataloader processing files... Trying to accumulate {} training points.".format(limit))
-        natom_range = [8, 30]
-        for file_id, file in enumerate(tqdm(files)):
-            if counter < limit:
-                data = qm9_xyz(file)
-                if data.natoms == None:
-                    pass
-                else:
-                    natoms = data.natoms
-                    coords = data.coords
-                    prots = np.asarray(list(map(float, data.prots[0])))
-                    prots_ids = np.asarray(list(map(float, data.prots[1])))
-                    partial = np.asarray(list(map(float, data.partial)))
+        self.filename = 'data/pkl/data_'+str(self.limit)+'.pkl'
+        self.scaled = scaled
+        self.max_two = 1
+        self.max_three = 1  # used to scale values to [0, 1]
+        if init:
+            files = glob.glob(pathname=path)
+            if shuffle:
+                random.shuffle(files)
+            counter = 0
+            print("Dataloader processing files... Trying to accumulate {} training points.".format(self.limit))
+            natom_range = [8, 30]
+            for file_id, file in enumerate(tqdm(files)):
+                if counter < self.limit:
+                    data = qm9_xyz(file)
+                    if data.natoms == None:
+                        pass
+                    else:
+                        natoms = data.natoms
+                        coords = data.coords
+                        prots = np.asarray(list(map(float, data.prots[0])))
+                        prots_ids = np.asarray(list(map(float, data.prots[1])))
+                        partial = np.asarray(list(map(float, data.partial)))
 
-                    # the padding points are out of reach for the neighborhoods of the molecule!
-                    xyz = np.full((natom_range[1], 3), 20, dtype=float)
-                    # xyz = np.random.rand(natom_range[1], 3)
-                    Z = np.zeros((natom_range[1], 1))
-                    padded_partial = np.zeros((natom_range[1], 1))
-                    padded_prot_ids = np.zeros((natom_range[1], 1))
-                    for i in range(xyz.shape[0]):
-                        if coords.shape[0] > i:
-                            Z[i] = prots[i]
-                            padded_partial[i] = partial[i]
-                            padded_prot_ids[i] = prots_ids[i]
-                            for j in range(3):
-                                xyz[i, j] = coords[i, j]
-                    two = None
-                    three = None
-                    if self.type > 1:
-                        two = self.two_body(xyz, Z)
-                        three = self.three_body(xyz, Z)
+                        # the padding points are out of reach for the neighborhoods of the molecule!
+                        xyz = np.full((natom_range[1], 3), 20, dtype=float)
+                        # xyz = np.random.rand(natom_range[1], 3)
+                        Z = np.zeros((natom_range[1], 1))
+                        padded_partial = np.zeros((natom_range[1], 1))
+                        padded_prot_ids = np.zeros((natom_range[1], 1))
+                        for i in range(xyz.shape[0]):
+                            if coords.shape[0] > i:
+                                Z[i] = prots[i]
+                                padded_partial[i] = partial[i]
+                                padded_prot_ids[i] = prots_ids[i]
+                                for j in range(3):
+                                    xyz[i, j] = coords[i, j]
+                        two = None
+                        three = None
+                        if self.type > 1:
+                            two = self.two_body(xyz, Z)
+                            three = self.three_body(xyz, Z)
+                        properties = data.properties[0]
+                        rotcon1 = float(properties[2])
+                        rotcon2 = float(properties[3])
+                        rotcon3 = float(properties[4])
+                        dipolemom = float(properties[5])
+                        isotropicpol = float(properties[6])
+                        homo = float(properties[7])
+                        lumo = float(properties[8])
+                        gap = float(properties[9])
+                        elect_spa_ext = float(properties[10])
+                        zeropointvib = float(properties[11])
+                        u0 = float(properties[12])
+                        Urt = (float(properties[13]) + 200) / (-400)
+                        Hrt = float(properties[14])
+                        Grt = float(properties[15])
+                        heatcap = float(properties[16])
 
-                    properties = data.properties[0]
-                    rotcon1 = float(properties[2])
-                    rotcon2 = float(properties[3])
-                    rotcon3 = float(properties[4])
-                    dipolemom = float(properties[5])
-                    isotropicpol = float(properties[6])
-                    homo = float(properties[7])
-                    lumo = float(properties[8])
-                    gap = float(properties[9])
-                    elect_spa_ext = float(properties[10])
-                    zeropointvib = float(properties[11])
-                    u0 = float(properties[12])
-                    Urt = (float(properties[13]) + 200) / (-400)
-                    Hrt = float(properties[14])
-                    Grt = float(properties[15])
-                    heatcap = float(properties[16])
+                        data_dict = {'natoms': natoms,
+                                     'Z': Z,
+                                     'two': two,
+                                     'three': three,
+                                     'prots_ids': padded_prot_ids,
+                                     'partial': padded_partial,
+                                     'xyz': xyz,
+                                     'rotcon1': rotcon1,
+                                     'rotcon2': rotcon2,
+                                     'rotcon3': rotcon3,
+                                     'dipolemom': dipolemom,
+                                     'isotropicpol': isotropicpol,
+                                     'homo': homo,
+                                     'lumo': lumo,
+                                     'gap': gap,
+                                     'elect_spa_ext': elect_spa_ext,
+                                     'zeropointvib': zeropointvib,
+                                     'u0': u0,  # Internal energy at 0K
+                                     'Urt': Urt,  # Internal energy at 298.15K    <==========   THIS IS THE TARGET PROPERTY!
+                                     'Hrt': Hrt,  # Enthalpy at 298.15K
+                                     'Grt': Grt,  # Free energy at 298.15K
+                                     'heatcap': heatcap,
+                                     'file': file}
+                        self.data.update({str(counter): data_dict})
+                        counter += 1
+        else:
+            print("Trying to load data from pickle...", self.filename, ". Total number of samples:", self.limit)
+            self.__load_data__()
 
-                    data_dict = {'natoms': natoms,
-                                 'Z': Z,
-                                 'two': two,
-                                 'three': three,
-                                 'prots_ids': padded_prot_ids,
-                                 'partial': padded_partial,
-                                 'xyz': xyz,
-                                 'rotcon1': rotcon1,
-                                 'rotcon2': rotcon2,
-                                 'rotcon3': rotcon3,
-                                 'dipolemom': dipolemom,
-                                 'isotropicpol': isotropicpol,
-                                 'homo': homo,
-                                 'lumo': lumo,
-                                 'gap': gap,
-                                 'elect_spa_ext': elect_spa_ext,
-                                 'zeropointvib': zeropointvib,
-                                 'u0': u0,  # Internal energy at 0K
-                                 'Urt': Urt,  # Internal energy at 298.15K    <==========   THIS IS THE TARGET PROPERTY!
-                                 'Hrt': Hrt,  # Enthalpy at 298.15K
-                                 'Grt': Grt,  # Free energy at 298.15K
-                                 'heatcap': heatcap,
-                                 'file': file}
-                    self.data.update({str(counter): data_dict})
-                    counter += 1
-            else:
-                break
+    def __save_data__(self):
+        if not os.path.isdir('data/pkl'):
+            os.mkdir('data/pkl')
+        with open(self.filename, 'wb') as fp:
+            pickle.dump(self.data, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def __load_data__(self):
+        try:
+            with open(self.filename, 'rb') as fp:
+                self.data = pickle.load(fp)
+        except IOError as e:
+            print('File ' + filename + ' not found.')
+            print(e.errno)
 
     def two_body(self, xyz, Z, norm=False):
         dists = squareform(pdist(xyz, 'euclidean', p=2, w=None, V=None, VI=None))
@@ -177,6 +203,17 @@ class qm9_loader(Dataset):
         assert den > 0, print("Nenner 0 error: ", p1, p2, p3)
         return math.degrees(math.acos(num / den))
 
+    def get_max_23(self):
+        for idx in range(self.limit):
+            two = self.data[str(idx)]['two']
+            if np.amax(two) > self.max_two:
+                self.max_two = np.amax(two)
+            three = self.data[str(idx)]['three']
+            if np.amax(three) > self.max_three:
+                self.max_three = np.amax(three)
+        print("max 2:", self.max_two)
+        print("max 3:", self.max_three)
+
     def __len__(self):
         return len(self.data)
 
@@ -186,6 +223,9 @@ class qm9_loader(Dataset):
         if self.type > 1:
             two = self.data[str(idx)]['two'].reshape(30, 1)
             three = self.data[str(idx)]['three'].reshape(30, 1)
+            if self.scaled:
+                two /= self.max_two
+                three /= self.max_three
             stack = np.concatenate([Z, two, three], axis=1)
             return torch.Tensor(self.data[str(idx)]['xyz']), \
                    torch.LongTensor(prots), \

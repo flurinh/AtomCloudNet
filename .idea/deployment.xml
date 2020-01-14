@@ -5,11 +5,13 @@
       <paths name="Leonhard">
         <serverdata>
           <mappings>
-            <mapping deploy="/cluster/work/schneider/modlab/Kenneth/Protos" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/cluster/home/hidberf/Protos" local="$PROJECT_DIR$" web="/" />
           </mappings>
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/data" />
-            <excludedPath local="true" path="$PROJECT_DIR$/se3cnn-point" />
+            <excludedPath local="true" path="$PROJECT_DIR$/runs" />
+            <excludedPath local="true" path="$PROJECT_DIR$/models" />
+            <excludedPath local="true" path="$PROJECT_DIR$/config_ACN" />
           </excludedPaths>
         </serverdata>
       </paths>
