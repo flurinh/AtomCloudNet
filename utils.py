@@ -26,7 +26,7 @@ def get_config2(run_id = 1, path = "config/config_"):
     print("Loading config file.. " + config_file)
     parser = ConfigParser()
     parser.read(config_file)
-    model = parser['SETTING']['model']
+    model = int(parser['SETTING']['model'])
     lr = float(parser['SETTING']['lr'])
     epochs = int(parser['SETTING']['epochs'])
     batchsize = int(parser['SETTING']['batchsize'])

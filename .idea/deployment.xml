@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="On explicit save action" deleteMissingItems="true" createEmptyFolders="true">
+  <component name="PublishConfigData" autoUpload="On explicit save action" serverName="Leonhard" deleteMissingItems="true" createEmptyFolders="true">
     <serverData>
-      <paths name="hidberf@login.leonhard.ethz.ch:22">
+      <paths name="Leonhard">
         <serverdata>
           <mappings>
-            <mapping deploy="/cluster/home/hidberf/Protos" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/cluster/work/schneider/modlab/Kenneth/Protos" local="$PROJECT_DIR$" web="/" />
           </mappings>
           <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/runs" />
             <excludedPath local="true" path="$PROJECT_DIR$/data" />
-            <excludedPath local="true" path="$PROJECT_DIR$/models" />
+            <excludedPath local="true" path="$PROJECT_DIR$/se3cnn-point" />
           </excludedPaths>
         </serverdata>
       </paths>

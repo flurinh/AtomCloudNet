@@ -52,9 +52,8 @@ class ACN:
         self.batch_size = self.hyperparams[7]
         self.ngpus = 0
 
-        feats = ['prot', 'ph']
-        train_data = qm9_loader(feats=feats, limit=10000, path=self.train_path + '/*.xyz')
-        # test_data = qm9_loader(feats=feats, limit=np.inf, path=self.test_path + '/*.xyz')
+        train_data = qm9_loader(limit=10000, path=self.train_path + '/*.xyz', type=self.type)
+        # test_data = qm9_loader(limit=np.inf, path=self.test_path + '/*.xyz')
         print("\nTotal number of training samples assembled:", train_data.__len__())
 
         num_train = len(train_data)
@@ -71,7 +70,6 @@ class ACN:
         self.val_loader = DataLoader(train_data, batch_size=self.batch_size, sampler=val_sampler)
         # self.test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
-        # gpu
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         if self.device is 'cuda':
             torch.cuda.synchronize()
@@ -79,26 +77,28 @@ class ACN:
 
         self.nepochs = self.hyperparams[6]
 
-    def train_molecular_model(self, type):
-        if type == 1:
-            model = se3ACN(device=self.device, nclouds=self.hyperparams[3], natoms=30,
-                           resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
-                           neighborradius=self.hyperparams[2],
-                           nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
-                           cloudord=self.hyperparams[11]
-                           ).float()
-        else:
-            model = se3AtomCloudNet(device=self.device, nclouds=self.hyperparams[3], natoms=30,
-                                    resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
-                                    neighborradius=self.hyperparams[2],
-                                    nffl=self.hyperparams[8], ffl1size=self.hyperparams[9],
-                                    emb_dim=self.hyperparams[10],
-                                    cloudord=self.hyperparams[11]
-                                    ).float()
+    def train_molecular_model(self):
+        use_Z_emb = False
+        use_23_body = False
+        if self.type == 1:
+            use_Z_emb = True
+        if self.type == 2:
+            use_23_body = True
+        if self.type == 3:
+            use_Z_emb = True
+            use_23_body = True
 
-        model.train()
+        print("Generating model of type {}".format(self.type))
+        model = se3ACN(device=self.device, nclouds=self.hyperparams[3], natoms=30,
+                       resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
+                       neighborradius=self.hyperparams[2],
+                       nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
+                       cloudord=self.hyperparams[11], two_three=use_23_body, Z=use_Z_emb
+                       ).float()
         criterion = nn.MSELoss()
+        mae_criterion = nn.L1Loss()
         opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1])
+        model.train()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
         if self.verbose > 0:
@@ -113,30 +113,40 @@ class ACN:
         val_pbar = tqdm(self.val_loader)
 
         min_loss = np.inf
+        for _ in range(self.nepochs):
 
-        for _ in trange(self.nepochs):
             # TRAINING
             tot_loss = 0
             model.train()
             for i, (xyz, prot_ids, features, urt) in enumerate(train_pbar, start=1):
                 train_step += self.batch_size
                 xyz = xyz.to(self.device)
-                feat = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
-                prediction = model(xyz, feat)
+                featZ = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
+                if self.type == 1:
+                    prediction = model(xyz, featZ, None)
+                elif self.type == 2:
+                    feat23 = features.to(self.device)
+                    prediction = model(xyz, None, feat23)
+                elif self.type == 3:
+                    feat23 = features.to(self.device)
+                    prediction = model(xyz, featZ, feat23)
                 loss = criterion(prediction, urt.to(self.device))
+                mae = mae_criterion(prediction, urt.to(self.device))
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
+                mae_loss = mae.cpu().item()
                 loss_ = torch.sqrt(loss).cpu().item()
                 tot_loss += loss_
                 avg_loss = tot_loss / i
                 ex_pred = prediction[0].cpu().detach().numpy().round(3)
                 ex_target = urt[0].cpu().detach().numpy().round(3)
-                train_pbar.set_description("epoch-avg-loss::{}  "
+                train_pbar.set_description("train-avg-loss::{}  "
                                            "--------  loss::{}  "
+                                           "--------  mae-loss::{}  "
                                            "--------  prediction::{}  "
                                            "--------  target::{}  "
-                                           .format(avg_loss, loss_, ex_pred,
+                                           .format(avg_loss, loss_, mae_loss, ex_pred,
                                                    ex_target))
                 self.train_writer.add_scalar('train__loss', loss_, train_step)
                 if train_step % 1000 == 0:
@@ -149,101 +159,29 @@ class ACN:
             for i, (xyz, prot_ids, features, urt) in enumerate(val_pbar, start=1):
                 val_step += self.batch_size
                 xyz = xyz.to(self.device)
-                feat = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
-                prediction = model(xyz, feat)
+                featZ = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
+                if self.type == 1:
+                    prediction = model(xyz, featZ, None)
+                elif self.type == 2:
+                    feat23 = features.to(self.device)
+                    prediction = model(xyz, None, feat23)
+                elif self.type == 3:
+                    feat23 = features.to(self.device)
+                    prediction = model(xyz, featZ, feat23)
                 loss = criterion(prediction, urt.to(self.device))
+                mae = mae_criterion(prediction, urt.to(self.device))
                 loss_ = torch.sqrt(loss).cpu().item()
+                mae_loss = mae.cpu().item()
                 tot_loss += loss_
                 avg_loss = tot_loss / i
                 ex_pred = prediction[0].cpu().detach().numpy().round(3)
                 ex_target = urt[0].cpu().detach().numpy().round(3)
-                val_pbar.set_description("training-avg-loss::{}  "
+                val_pbar.set_description("val-avg-loss::{}  "
                                          "--------  loss::{}  "
+                                         "--------  mae-loss::{}  "
                                          "--------  prediction::{}  "
                                          "--------  target::{}  "
-                                         .format(avg_loss, loss_, ex_pred,
-                                                 ex_target))
-                self.val_writer.add_scalar('val__loss', loss_, val_step)
-                if val_step % 1000 == 0:
-                    self.val_writer.add_text('val_prediction', str(ex_pred), val_step)
-                    self.val_writer.add_text('val_target', str(ex_target), val_step)
-            if tot_loss < min_loss:
-                torch.save(model.state_dict(), self.save_path + '.pkl')
-                min_loss = tot_loss
-
-    def train_molecular_modelK(self):
-        model = se3AtomCloudNetK(device=self.device, nclouds=self.hyperparams[3], natoms=30,
-                                 resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
-                                 neighborradius=self.hyperparams[2],
-                                 nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
-                                 cloudord=self.hyperparams[11]
-                                 ).float()
-        model.train()
-        criterion = nn.MSELoss()
-        opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1])
-        model_parameters = filter(lambda p: p.requires_grad, model.parameters())
-        params = sum([np.prod(p.size()) for p in model_parameters])
-        print(model)
-        print("Number trainable parameters:", params)
-        torch.autograd.set_detect_anomaly(True)
-        model.to(self.device)
-
-        train_step = 0
-        val_step = 0
-        train_pbar = tqdm(self.train_loader)
-        val_pbar = tqdm(self.val_loader)
-
-        min_loss = np.inf
-
-        for _ in trange(self.nepochs):
-            # TRAINING
-            tot_loss = 0
-            model.train()
-            for i, (xyz, prot_ids, features, urt) in enumerate(train_pbar, start=1):
-                prot_ids.type(torch.float)
-                feat = features.to(self.device)
-                train_step += self.batch_size
-                xyz = xyz.to(self.device)
-                prediction = model(xyz, feat)
-                loss = criterion(prediction, urt.to(self.device))
-                opt.zero_grad()
-                loss.backward()
-                opt.step()
-                loss_ = torch.sqrt(loss).cpu().item()
-                tot_loss += loss_
-                avg_loss = tot_loss / i
-                ex_pred = prediction[0].cpu().detach().numpy().round(3)
-                ex_target = urt[0].cpu().detach().numpy().round(3)
-                train_pbar.set_description("epoch-avg-loss::{}  "
-                                           "--------  loss::{}  "
-                                           "--------  prediction::{}  "
-                                           "--------  target::{}  "
-                                           .format(avg_loss, loss_, ex_pred,
-                                                   ex_target))
-                self.train_writer.add_scalar('train__loss', loss_, train_step)
-                if train_step % 1000 == 0:
-                    self.train_writer.add_text('train_prediction', str(ex_pred), train_step)
-                    self.train_writer.add_text('train_target', str(ex_target), train_step)
-
-            # VALIDATION
-            tot_loss = 0
-            model.eval()
-            for i, (xyz, prot_ids, features, urt) in enumerate(val_pbar, start=1):
-                prot_ids.type(torch.float)
-                feat = features.to(self.device)
-                val_step += self.batch_size
-                prediction = model(xyz, feat)
-                loss = criterion(prediction, urt.to(self.device))
-                loss_ = torch.sqrt(loss).cpu().item()
-                tot_loss += loss_
-                avg_loss = tot_loss / i
-                ex_pred = prediction[0].cpu().detach().numpy().round(3)
-                ex_target = urt[0].cpu().detach().numpy().round(3)
-                val_pbar.set_description("training-avg-loss::{}  "
-                                         "--------  loss::{}  "
-                                         "--------  prediction::{}  "
-                                         "--------  target::{}  "
-                                         .format(avg_loss, loss_, ex_pred,
+                                         .format(avg_loss, loss_, mae_loss, ex_pred,
                                                  ex_target))
                 self.val_writer.add_scalar('val__loss', loss_, val_step)
                 if val_step % 1000 == 0:
@@ -262,11 +200,6 @@ if __name__ == '__main__':
     # conda env create -f environment.yml
     parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
     parser.add_argument('--run', type=int, default=109)
-    parser.add_argument('--who', type=int, default=0)  # 0 = Kenneth, 1 = Flurin
-    parser.add_argument('--type', type=int, default=0)  # 0 = AtomCloudNet, 1 = ACN (cloud residuals)
     args = parser.parse_args()
     net = ACN(run_id=args.run)
-    if args.who == 0:
-        net.train_molecular_modelK()
-    else:
-        net.train_molecular_model(args.type)
+    net.train_molecular_model()

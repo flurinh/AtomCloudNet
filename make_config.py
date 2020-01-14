@@ -57,50 +57,52 @@ class Config:
             config_file = path + ".ini"
             self.parser = ConfigParser()
             self.parser.read(config_file)
-            self.idx = 1100
-            self.parser['SETTING']['model'] = 'ACN'
+            self.idx = 1200
 
-            lr = [0.0005]
-            epochs = [100]
+            model = [1, 2, 3]
+            lr = [0.0005, 0.0001]
+            epochs = [150]
             batchsize = [16]
-            neighborradius = [4]
+            neighborradius = [3, 4, 5]
             nclouds = [1, 2]
-            clouddim = [4]
-            cloudord = [3, 5]
-            resblocks = [2, 4]
+            clouddim = [4, 12]
+            cloudord = [3]
+            resblocks = [2]
             nffl = [2]
-            ffl1size = [128, 256]
+            ffl1size = [128]
             emb_dim = [16]
 
             # Todo: optimize: nffl=1, ffl1size=128, emb_dim=32
-            for l in lr:
-                for e in epochs:
-                    for b in batchsize:
-                        for n in neighborradius:
-                            for nc in nclouds:
-                                for cd in clouddim:
-                                    for co in cloudord:
-                                        for rb in resblocks:
-                                            for nf in nffl:
-                                                for ff in ffl1size:
-                                                    for ed in emb_dim:
-                                                        self.idx += 1
-                                                        new_config = path + '_' + str(self.idx).zfill(5) + '.ini'
-                                                        self.parser['SETTING']['lr'] = str(l)
-                                                        self.parser['SETTING']['neighborradius'] = str(n)
-                                                        self.parser['SETTING']['nclouds'] = str(nc)
-                                                        self.parser['SETTING']['clouddim'] = str(cd)
-                                                        self.parser['SETTING']['resblocks'] = str(rb)
-                                                        self.parser['SETTING']['nffl'] = str(nf)
-                                                        self.parser['SETTING']['ffl1size'] = str(ff)
-                                                        self.parser['SETTING']['emb_dim'] = str(ed)
-                                                        self.parser['SETTING']['epochs'] = str(e)
-                                                        self.parser['SETTING']['batchsize'] = str(b)
-                                                        self.parser['SETTING']['cloudord'] = str(co)
-                                                        if os.path.isfile(new_config):
-                                                            os.remove(new_config)
-                                                        with open(new_config, "w") as f:
-                                                            self.parser.write(f)
+            for m in model:
+                for l in lr:
+                    for e in epochs:
+                        for b in batchsize:
+                            for n in neighborradius:
+                                for nc in nclouds:
+                                    for cd in clouddim:
+                                        for co in cloudord:
+                                            for rb in resblocks:
+                                                for nf in nffl:
+                                                    for ff in ffl1size:
+                                                        for ed in emb_dim:
+                                                            self.idx += 1
+                                                            new_config = path + '_' + str(self.idx).zfill(5) + '.ini'
+                                                            self.parser['SETTING']['model'] = str(m)
+                                                            self.parser['SETTING']['lr'] = str(l)
+                                                            self.parser['SETTING']['neighborradius'] = str(n)
+                                                            self.parser['SETTING']['nclouds'] = str(nc)
+                                                            self.parser['SETTING']['clouddim'] = str(cd)
+                                                            self.parser['SETTING']['resblocks'] = str(rb)
+                                                            self.parser['SETTING']['nffl'] = str(nf)
+                                                            self.parser['SETTING']['ffl1size'] = str(ff)
+                                                            self.parser['SETTING']['emb_dim'] = str(ed)
+                                                            self.parser['SETTING']['epochs'] = str(e)
+                                                            self.parser['SETTING']['batchsize'] = str(b)
+                                                            self.parser['SETTING']['cloudord'] = str(co)
+                                                            if os.path.isfile(new_config):
+                                                                os.remove(new_config)
+                                                            with open(new_config, "w") as f:
+                                                                self.parser.write(f)
 
 
 if __name__ == '__main__':
@@ -110,50 +112,5 @@ if __name__ == '__main__':
     Config(setting=args.setting)
 
 
-
-
-
-
-
-"""def two_body(self, xyz, Z, norm=False):
-    dists = squareform(pdist(xyz, 'euclidean', p=2, w=None, V=None, VI=None))
-    dists = dists ** 6
-    zz = np.outer(Z, Z)
-    out = np.asarray([dists[i, j] / zz[i, j] if zz[i, j] != 0 else 0
-                      for i, j in itertools.product(range(30), range(30))])
-    mask = np.where(out == 0)
-    out[mask] = 1
-    # Todo: Normalization
-    for i in range(out.shape[0]):
-        if norm:
-            sigma = 5
-            mu = 50
-            out[i] = 1 / (sigma * np.sqrt(mu * 2)) * np.e ** -(out[i] ** 2)
-    final = 1 / out
-    final[mask] = 0
-    final = final.reshape((30, 30))
-    return final.sum(1)
-
-
-def three_body(self, xyz, Z):
-    dists = squareform(pdist(xyz, 'euclidean', p=3, w=None, V=None, VI=None))
-    dists = dists ** 3
-    zz = np.outer(Z, Z, Z)
-    out = np.asarray([dists[i, j] / zz[i, j] if zz[i, j] != 0 else 0
-                      for i, j in itertools.product(range(30), range(30))])
-    mask = np.where(out == 0)
-    out[mask] = 1
-    final = 1 / out
-    final[mask] = 0
-    final = final.reshape((30, 30, 30))
-    pass
-
-
-path = 'data/QM9Train'
-
-data = qm9_loader(limit = 10000, path = path + '/*.xyz')
-#print(data.data['0']['two'])
-for i in range(1000):
-    print(data.data[str(i)]['two'])"""
 
 

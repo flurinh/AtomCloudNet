@@ -35,6 +35,7 @@ def qm9_xyz(filepath):
                 ))
                 types = {'H': 0, 'C': 1, 'N': 2, 'O': 3, 'F': 4}
                 x[:] = list(map(float, line[1:4]))
+            # print(coords)
             return namedtuple("XYZFile", ["natoms", "properties", "coords", "atomtypes", "prots", "partial"]) \
                 (natoms, prop, coords, atomtypes, (prots, prot_ids), partial)
         except:

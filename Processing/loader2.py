@@ -1,6 +1,7 @@
 import glob
 from tqdm import trange, tqdm
 from scipy.spatial.distance import pdist, squareform
+import math
 import numpy as np
 import itertools
 import random
@@ -18,11 +19,12 @@ from torch.autograd import Variable
 
 class qm9_loader(Dataset):
     def __init__(self,
-                 feats=None,
                  limit=np.inf,
                  shuffle=True,
-                 path='data/QM9/*.xyz'):
+                 path='data/QM9/*.xyz',
+                 type = 1):
         self.data = {}
+        self.type = type
         self.partial = True
         # Todo: return features list corresponding to "feats"
         files = glob.glob(pathname=path)
@@ -44,7 +46,7 @@ class qm9_loader(Dataset):
                     partial = np.asarray(list(map(float, data.partial)))
 
                     # the padding points are out of reach for the neighborhoods of the molecule!
-                    xyz = np.full((natom_range[1], 3), 20)
+                    xyz = np.full((natom_range[1], 3), 20, dtype=float)
                     # xyz = np.random.rand(natom_range[1], 3)
                     Z = np.zeros((natom_range[1], 1))
                     padded_partial = np.zeros((natom_range[1], 1))
@@ -56,11 +58,12 @@ class qm9_loader(Dataset):
                             padded_prot_ids[i] = prots_ids[i]
                             for j in range(3):
                                 xyz[i, j] = coords[i, j]
+                    two = None
+                    three = None
+                    if self.type > 1:
+                        two = self.two_body(xyz, Z)
+                        three = self.three_body(xyz, Z)
 
-                    two = self.two_body(xyz, Z)
-                    # three = self.two_body(xyz, Z)
-
-                    atoms = data.atomtypes
                     properties = data.properties[0]
                     rotcon1 = float(properties[2])
                     rotcon2 = float(properties[3])
@@ -81,6 +84,7 @@ class qm9_loader(Dataset):
                     data_dict = {'natoms': natoms,
                                  'Z': Z,
                                  'two': two,
+                                 'three': three,
                                  'prots_ids': padded_prot_ids,
                                  'partial': padded_partial,
                                  'xyz': xyz,
@@ -91,14 +95,15 @@ class qm9_loader(Dataset):
                                  'isotropicpol': isotropicpol,
                                  'homo': homo,
                                  'lumo': lumo,
-                                 'gap': gap, # Todo: run
+                                 'gap': gap,
                                  'elect_spa_ext': elect_spa_ext,
                                  'zeropointvib': zeropointvib,
                                  'u0': u0,  # Internal energy at 0K
-                                 'Urt': Urt,  # Internal energy at 298.15K Todo: Run
+                                 'Urt': Urt,  # Internal energy at 298.15K    <==========   THIS IS THE TARGET PROPERTY!
                                  'Hrt': Hrt,  # Enthalpy at 298.15K
                                  'Grt': Grt,  # Free energy at 298.15K
-                                 'heatcap': heatcap}
+                                 'heatcap': heatcap,
+                                 'file': file}
                     self.data.update({str(counter): data_dict})
                     counter += 1
             else:
@@ -124,7 +129,53 @@ class qm9_loader(Dataset):
         return final.sum(1)
 
     def three_body(self, xyz, Z):
-        pass
+        ids = [x for x in range(xyz.shape[0])]
+        res = list(itertools.product(*[ids, ids, ids]))
+        dists = squareform(pdist(xyz, 'euclidean', p=2, w=None, V=None, VI=None))
+        values = [self.three_body_val(ids_, xyz, Z, dists) if len(ids_) == len(set(ids_)) else 0 for ids_ in res]
+        grid = np.zeros((30, 30, 30))
+        for value, ids_ in zip(values, res):
+            x, y, z = ids_
+            grid[x, y, z] = value
+        sums = np.zeros((xyz.shape[0]))
+        for atom in range(xyz.shape[0]):
+            sums[atom] = np.sum(grid[atom, :, :])
+        return sums
+
+    def three_body_val(self, ids_, xyz, Z, dists, p=3):
+        z1 = Z[ids_[0]]
+        z2 = Z[ids_[1]]
+        z3 = Z[ids_[2]]
+        p1 = xyz[ids_[0]]
+        p2 = xyz[ids_[1]]
+        p3 = xyz[ids_[2]]
+        if 20. in p1:
+            return 0
+        if 20. in p2:
+            return 0
+        if 20. in p3:
+            return 0
+        r12 = dists[ids_[0], ids_[1]]
+        r23 = dists[ids_[1], ids_[2]]
+        r13 = dists[ids_[0], ids_[2]]
+        a = self.angle_triangle(xyz[ids_[0]], xyz[ids_[1]], xyz[ids_[2]])
+        b = self.angle_triangle(xyz[ids_[1]], xyz[ids_[2]], xyz[ids_[0]])
+        c = 180 - a - b
+        z_score = z1 * z2 * z3
+        angle_score = 1 + math.cos(a) * math.cos(b) * math.cos(c)
+        r_score = (r12 * r23 * r13) ** p
+        assert r_score > 0, print(r12, r23, r13)
+        return z_score * angle_score / r_score
+
+    def angle_triangle(self, p1, p2, p3):
+        x1, y1, z1 = p1
+        x2, y2, z2 = p2
+        x3, y3, z3 = p3
+        num = (x2 - x1) * (x3 - x1) + (y2 - y1) * (y3 - y1) + (z2 - z1) * (z3 - z1)
+        den = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) * \
+              math.sqrt((x3 - x1) ** 2 + (y3 - y1) ** 2 + (z3 - z1) ** 2)
+        assert den > 0, print("Nenner 0 error: ", p1, p2, p3)
+        return math.degrees(math.acos(num / den))
 
     def __len__(self):
         return len(self.data)
@@ -132,11 +183,20 @@ class qm9_loader(Dataset):
     def __getitem__(self, idx):
         prots = self.data[str(idx)]['prots_ids']
         Z = self.data[str(idx)]['Z']
-        two = self.data[str(idx)]['two'].reshape(30, 1)
-        # three
-        stack = np.concatenate([prots, two, two], axis=1)
-        return torch.Tensor(self.data[str(idx)]['xyz']), \
-               torch.LongTensor(Z), \
-               torch.Tensor(stack), \
-               torch.Tensor([self.data[str(idx)]['Urt']])
+        if self.type > 1:
+            two = self.data[str(idx)]['two'].reshape(30, 1)
+            three = self.data[str(idx)]['three'].reshape(30, 1)
+            stack = np.concatenate([Z, two, three], axis=1)
+            return torch.Tensor(self.data[str(idx)]['xyz']), \
+                   torch.LongTensor(prots), \
+                   torch.Tensor(stack), \
+                   torch.Tensor([self.data[str(idx)]['Urt']])
+        else:
+            return torch.Tensor(self.data[str(idx)]['xyz']), \
+                   torch.LongTensor(prots), \
+                   [], \
+                   torch.Tensor([self.data[str(idx)]['Urt']])
+
+    def __getfilename__(self, idx):
+        return self.data[str(idx)]['file']
 

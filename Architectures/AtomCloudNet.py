@@ -137,128 +137,14 @@ class se3AtomCloudNet(nn.Module):
         return output
 
 
-class se3AtomCloudNetK(nn.Module):
-    def __init__(self, device='cpu', nclouds = 1, natoms = 30, resblocks = 1, cloud_dim=24, neighborradius=2,
-                 nffl=1, ffl1size=128, emb_dim=32, cloudord=3):
-        super(se3AtomCloudNetK, self).__init__()
-        self.device = device
-        self.natoms = natoms
-
-        self.emb_dim = emb_dim
-        if resblocks >= 1:
-            self.residuals = True
-        else:
-            self.residuals = False
-        self.resblocks = resblocks
-        self.cloudnorm = False  # Todo: normalization of cloud kernel
-        self.feature_collation = 'mean'  # pool or else use dense layer
-        self.nffl = nffl
-        self.ffl1size = ffl1size
-
-        # Cloud specifications
-        self.nclouds = nclouds
-        self.cloud_order = cloudord
-        self.cloud_dim = cloud_dim
-
-        self.radial_layers = 2
-        self.sp = rescaled_act.Softplus(beta=5)
-        self.sh = se3cnn.SO3.spherical_harmonics_xyz
-
-        # Radial Model
-        self.number_of_basis = 3
-        self.neighbor_radius = neighborradius
-        self.RadialModel = partial(CosineBasisModel,
-                                   max_radius=self.neighbor_radius,
-                                   number_of_basis=self.number_of_basis,
-                                   h=100,
-                                   L=self.radial_layers,
-                                   act=self.sp)
-
-        self.K = partial(se3cnn.point.kernel.Kernel, RadialModel=self.RadialModel, sh=self.sh, normalization='norm')
-        # self.NC = partial(NeighborsConvolution, self.K, self.neighbor_radius)
-
-        # Cloud layers
-        self.clouds = nn.ModuleList()
-        dim_out = self.cloud_dim
-        Rs_in = [(3, o) for o in range(1)]
-        Rs_out = [(dim_out, o) for o in range(self.cloud_order)]
-
-        for c in range(self.nclouds):
-            # Cloud
-            print("Rs_in", Rs_in)
-            print("Rs_out", Rs_out)
-            """
-            dimensionalities = [2 * L + 1 for mult, L in Rs_out for _ in range(mult)]
-            print(dimensionalities)
-            norm_activation = nl.norm_activation.NormActivation(dimensionalities,
-                                                                rescaled_act.sigmoid,
-                                                                rescaled_act.sigmoid)
-            print(norm_activation)
-            self.clouds.append(nl.gated_block.GatedBlock(Rs_in, Rs_out, self.sp, rescaled_act.sigmoid, Operation=self.NC))
-            """
-            self.clouds.append(NeighborsConvolution(self.K, Rs_in, Rs_out, self.neighbor_radius))
-            """
-            self.clouds.append(GatedBlock(Rs_in, Rs_out, 
-                                          scalar_activation=self.sp,
-                                          gate_activation=rescaled_act.sigmoid,
-                                          Operation=self.NC))
-            """
-            cloud_out = self.cloud_dim * (self.cloud_order**2)
-            # Cloud residuals (should only be applied to final cloud)
-            if self.residuals:
-                if c == (self.nclouds-1):
-                    self.clouds.append(AtomResiduals(in_channel=cloud_out, res_blocks=self.resblocks, device=self.device))
-                    res_out = 2 * cloud_out
-            else:
-                res_out = cloud_out
-            Rs_in = Rs_out
-
-        # molecular feature collation (either dense layer or average pooling of atoms)
-        self.collate = nn.Linear(self.natoms, 1)
-        # passing molecular features through output layer
-        self.collate2 = nn.ModuleList()
-        in_shape = res_out
-        for _ in range(self.nffl):
-            out_shape = self.ffl1size // (_ + 1)
-            self.collate2.append(nn.Linear(in_shape, out_shape))
-            # self.collate2.append(nn.Dropout(.1))
-            self.collate2.append(nn.BatchNorm1d(out_shape))
-            in_shape = out_shape
-        self.outputlayer = nn.Linear(in_shape, 1)
-        # output activation layer
-        self.act = nn.Sigmoid()
-
-    def forward(self, xyz, features):
-        assert xyz.size()[:1] == features.size()[:1], "xyz ({}) and feature size ({}) should match"\
-            .format(xyz.size(), features.size())
-        # NO EMBEDDING!
-        for _, op in enumerate(self.clouds):
-            features = op(features, geometry=xyz)
-            # print("Cloud: ", str(features.size()))
-        #print(features.shape)
-        if 'mean' in self.feature_collation:
-            features = features.mean(1)
-        elif 'pool' in self.feature_collation: # not tested
-            features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
-        else:
-            features = features.permute(0, 2, 1)
-            features = self.collate(features)
-        #print(features.shape)
-        features = features.squeeze()
-        #print(features.shape)
-        for _, op in enumerate(self.collate2):
-            features = F.leaky_relu(op(features))
-        #print(features.shape)
-        output = self.act(self.outputlayer(features))
-        return output
-
-
 class se3ACN(nn.Module):
     def __init__(self, device='cpu', nclouds = 1, natoms = 30, resblocks = 1, cloud_dim=24, neighborradius=2,
-                 nffl=1, ffl1size=128, emb_dim=32, cloudord=3):
+                 nffl=1, ffl1size=128, emb_dim=32, cloudord=3, two_three=False, Z=False):
         super(se3ACN, self).__init__()
         self.device = device
         self.natoms = natoms
+        self.two_three = two_three
+        self.Z = Z
 
         self.emb_dim = emb_dim
         if resblocks >= 1:
@@ -269,7 +155,7 @@ class se3ACN(nn.Module):
 
         self.resblocks = resblocks
         self.cloudnorm = False  # Todo: normalization of cloud kernel
-        self.feature_collation = 'mean'  # pool or else use dense layer
+        self.feature_collation = 'sum'  # pool or else use dense layer
         self.nffl = nffl
         self.ffl1size = ffl1size
 
@@ -300,7 +186,16 @@ class se3ACN(nn.Module):
 
         # Cloud layers
         self.clouds = nn.ModuleList()
-        dim_in = self.emb_dim
+        # Calculate feature input dimension (depends on whether we use Z-embedding, two- & three-body interactions
+        # or both.
+        dim_in = 0
+        if self.Z:
+            dim_in+=self.emb_dim
+        if self.two_three:
+            dim_in+=3
+        assert dim_in > 0, print("Either embedding dimension or two-&three-body interaction data dimension should be"
+                                 " greater than 0!")
+        # Number output features per atom (these are then stacked with cloud residuals depending on settings...)
         dim_out = self.cloud_dim
         Rs_in = [(dim_in, o) for o in range(1)]
         Rs_out = [(dim_out, o) for o in range(self.cloud_order)]
@@ -317,26 +212,13 @@ class se3ACN(nn.Module):
             cloud_out = self.cloud_dim * (self.cloud_order ** 2) * self.nclouds
         else:
             cloud_out = self.cloud_dim * (self.cloud_order ** 2)
+
         # Cloud residuals (should only be applied to final cloud)
         if self.final_res:
             self.cloud_residual = AtomResiduals(in_channel=cloud_out, res_blocks=self.resblocks, device=self.device)
             res_out = cloud_out * 2
         else:
             res_out = cloud_out
-        n_feats = res_out
-
-        # MOLECULAR FEATURE COLLATION
-        # (either molecular cloud or mean/average pooling of each features over all atoms)
-        """
-        max_radius = 10
-        R = partial(CosineBasisModel, max_radius=max_radius, number_of_basis=10, h=100, L=2, act=relu)
-        K = partial(Kernel, RadialModel=R)
-        Rs_in = [(n_feats, 0)]
-        Rs_out = [(1, i) for i in range(5)]
-        print("Rs_in", Rs_in)
-        print("Rs_out", Rs_out)
-        self.molecular_cloud = se3cnn.point.operations.Convolution(K, Rs_in, Rs_out)
-        """
 
         # passing molecular features through output layer
         self.collate = nn.ModuleList()
@@ -344,18 +226,29 @@ class se3ACN(nn.Module):
         for _ in range(self.nffl):
             out_shape = self.ffl1size // (_ + 1)
             self.collate.append(nn.Linear(in_shape, out_shape))
+            self.collate.append(nn.ReLU())
             self.collate.append(nn.BatchNorm1d(out_shape))
             in_shape = out_shape
-        self.outputlayer = nn.Linear(in_shape, 1)
-        # output activation layer
-        self.act = nn.Sigmoid()
 
-    def forward(self, xyz, features):
-        assert xyz.size()[:1] == features.size()[:1], "xyz ({}) and feature size ({}) should match"\
-            .format(xyz.size(), features.size())
-        #print("0", features.size())
-        features = self.emb(features)
-        #print("1", features.size())
+        # Final output activation layer
+        self.outputlayer = nn.Linear(in_shape, 1)
+        self.act = nn.Sigmoid()  # y is scaled between 0 and 1
+
+    def forward(self, xyz, Z, body23):
+        features_emb = None
+        features_23 = None
+        if self.Z:
+            features_emb = self.emb(Z)
+        if self.two_three:
+            features_23 = body23
+        if features_emb is None:
+            features = features_23
+        else:
+            if features_23 is None:
+                features = features_emb
+            else:
+                features = torch.cat([features_23, features_emb], dim=2)
+
         feature_list = []
         for _, op in enumerate(self.clouds):
             features = op(features, geometry=xyz)
@@ -372,12 +265,11 @@ class se3ACN(nn.Module):
             features = self.cloud_residual(features)
             #print("final cloud residual:", features.size())
 
-        if 'mean' in self.feature_collation:
-            features = features.mean(1)
+        if 'sum' in self.feature_collation:
+            features = features.sum(1)
         elif 'pool' in self.feature_collation:  # not tested
+            # torch.nn.functional.lp_pool2d(features, (1, features.shape[2]), ceil_mode=False)
             features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
-        else:
-            features = self.molecular_cloud(features)
 
         #print(features.shape)
         features = features.squeeze()
