@@ -226,7 +226,6 @@ class se3ACN(nn.Module):
         for _ in range(self.nffl):
             out_shape = self.ffl1size // (_ + 1)
             self.collate.append(nn.Linear(in_shape, out_shape))
-            self.collate.append(nn.ReLU())
             self.collate.append(nn.BatchNorm1d(out_shape))
             in_shape = out_shape
 
@@ -253,17 +252,14 @@ class se3ACN(nn.Module):
         for _, op in enumerate(self.clouds):
             features = op(features, geometry=xyz)
             if self.cloud_res:
-                # print("storing features:", features.size())
                 feature_list.append(features)
-            #print("Cloud: ", str(features.size()))
 
         if self.cloud_res:
-            features = torch.cat(feature_list, dim=2)
-            #print("concatenated features:", features.size())
+            if len(feature_list) > 1:
+                features = torch.cat(feature_list, dim=2)
 
         if self.final_res:
             features = self.cloud_residual(features)
-            #print("final cloud residual:", features.size())
 
         if 'sum' in self.feature_collation:
             features = features.sum(1)
@@ -271,14 +267,10 @@ class se3ACN(nn.Module):
             # torch.nn.functional.lp_pool2d(features, (1, features.shape[2]), ceil_mode=False)
             features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
 
-        #print(features.shape)
         features = features.squeeze()
-        #print(features.shape)
         for _, op in enumerate(self.collate):
             features = F.leaky_relu(op(features))
-        #print(features.shape)
-        output = self.act(self.outputlayer(features))
-        return output
+        return self.act(self.outputlayer(features))
 
 
 class AtomCloudNet(nn.Module):

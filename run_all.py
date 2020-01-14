@@ -24,8 +24,8 @@ if __name__ == '__main__':
                 os.system('bsub -W 72:00 -R "rusage[mem=16382]" python sandbox.py --run ' + str(ini_id))
                 time.sleep(1)
                 # ssh -NfL localhost:16019:localhost:6019 hidberf@login.leonhard.ethz.ch
-            # os.system('bsub -W 24:00 python sandbox.py --run ' + str(ini_id))
-            # os.system('python sandbox.py --run ' + str(int(ini_id)))
+                # os.system('bsub -W 24:00 python sandbox.py --run ' + str(ini_id))
+                # os.system('python sandbox.py --run ' + str(int(ini_id)))
 
     if args.setting == 0:
         for i in range(24):
