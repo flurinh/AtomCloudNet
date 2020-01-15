@@ -107,7 +107,7 @@ class ACN:
         criterion = nn.MSELoss()
         mae_criterion = nn.L1Loss()
         opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1])
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=7, verbose=True)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=20, verbose=True)
         model.train()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
@@ -200,8 +200,8 @@ class ACN:
             if tot_loss < min_loss:
                 torch.save(model.state_dict(), self.save_path + '.pkl')
                 min_loss = tot_loss
-            if epoch > 10:
-                scheduler.step()
+            if epoch > 20:
+                scheduler.step(avg_loss)
 
 if __name__ == '__main__':
     # run: module load python_gpu/3.7.1 gcc/6.3.0
