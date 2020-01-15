@@ -14,6 +14,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, SubsetRandomSampler
 
+from se3cnn.util.default_dtype import torch_default_dtype
+
 TRAIN_PATH = 'data/QM9Train'
 TEST_PATH = 'data/QM9Test'
 
@@ -52,7 +54,10 @@ class ACN:
         self.batch_size = self.hyperparams[7]
         self.ngpus = 0
 
+
         train_data = qm9_loader(limit=10000, path=self.train_path + '/*.xyz', type=self.type, init = False)
+        print(train_data.max_two)
+        print(train_data.max_three)
         # test_data = qm9_loader(limit=np.inf, path=self.test_path + '/*.xyz', type=self.type, init = True)
         print("\nTotal number of training samples assembled:", train_data.__len__())
 
@@ -71,8 +76,6 @@ class ACN:
         # self.test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        if self.device is 'cuda':
-            torch.cuda.synchronize()
         print("Using device:", self.device)
 
         self.nepochs = self.hyperparams[6]
@@ -87,26 +90,30 @@ class ACN:
         if self.type == 3:
             use_Z_emb = True
             use_23_body = True
-
-        print("Generating model of type {}".format(self.type))
-        model = se3ACN(device=self.device, nclouds=self.hyperparams[3], natoms=30,
-                       resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
-                       neighborradius=self.hyperparams[2],
-                       nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
-                       cloudord=self.hyperparams[11], two_three=use_23_body, Z=use_Z_emb
-                       ).float()
+        with torch_default_dtype(torch.float64):
+            print("Generating model of type {}".format(self.type))
+            model = se3ACN(device=self.device, nclouds=self.hyperparams[3], natoms=30,
+                           resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
+                           neighborradius=self.hyperparams[2],
+                           nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
+                           cloudord=self.hyperparams[11], two_three=use_23_body, Z=use_Z_emb)
+        print("applying weights")
+        model.apply(weights_init)
+        if torch.cuda.device_count() > 1:
+            print("Let's use", torch.cuda.device_count(), "GPUs!")
+            # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
+            model = torch.nn.DataParallel(model)
+        model.to(self.device)
         criterion = nn.MSELoss()
         mae_criterion = nn.L1Loss()
         opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1])
-        scheduler = torch.optim.lr_scheduler.StepLR(opt, step_size=10, gamma=0.2)
+        scheduler = torch.optim.lr_scheduler.StepLR(opt, step_size=20, gamma=0.2)
         model.train()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
         if self.verbose > 0:
             print(model)
             print("Number trainable parameters:", params)
-        torch.autograd.set_detect_anomaly(True)
-        model.to(self.device)
 
         train_step = 0
         val_step = 0
@@ -131,14 +138,15 @@ class ACN:
                 elif self.type == 3:
                     feat23 = features.to(self.device)
                     prediction = model(xyz, featZ, feat23)
-                loss = criterion(prediction, urt.to(self.device))
-                mae = mae_criterion(prediction, urt.to(self.device))
+                target = urt.to(self.device).double()
+                loss = criterion(prediction, target)
+                mae = mae_criterion(prediction, target)
                 opt.zero_grad()
                 mae.backward()  # can also be loss = rmse-loss
                 opt.step()
                 mae_loss = mae.cpu().item()
                 loss_ = torch.sqrt(loss).cpu().item()
-                tot_loss += loss_
+                tot_loss += mae_loss
                 avg_loss = tot_loss / i
                 ex_pred = prediction[0].cpu().detach().numpy().round(3)
                 ex_target = urt[0].cpu().detach().numpy().round(3)
@@ -169,11 +177,12 @@ class ACN:
                 elif self.type == 3:
                     feat23 = features.to(self.device)
                     prediction = model(xyz, featZ, feat23)
-                loss = criterion(prediction, urt.to(self.device))
-                mae = mae_criterion(prediction, urt.to(self.device))
+                target = urt.to(self.device).double()
+                loss = criterion(prediction, target)
+                mae = mae_criterion(prediction, target)
                 loss_ = torch.sqrt(loss).cpu().item()
                 mae_loss = mae.cpu().item()
-                tot_loss += loss_
+                tot_loss += mae_loss
                 avg_loss = tot_loss / i
                 ex_pred = prediction[0].cpu().detach().numpy().round(3)
                 ex_target = urt[0].cpu().detach().numpy().round(3)
