@@ -9,14 +9,17 @@ StdCM = [0.15217299649321853, 0.01623470576872112, 0.005203141096532805 , 0.0014
 StdSLATM = [0.27832101126536674, 0.0019484438815888065, 0.000803575696966312, 0.000033652891644, 0]
 StdCM = [i * 630 for i in StdCM]
 StdSLATM = [i * 630 for i in StdSLATM]
+Atm = [0.40411114798679526 * 630]
+
 
 
 plt.xlabel("Training set size", fontsize=14)
 plt.ylabel("MAE[kcal/mol]", fontsize=14)
 plt.tick_params(axis='x', labelsize=16)
 plt.tick_params(axis='y', labelsize=16)
-plt.loglog(Traning, CM, 'r-o', label = "CM")
-plt.loglog(Traning, SLATM, 'k-o', label = "SLATM")
+plt.loglog([10000], Atm, 'g-o', label = "AtomCloudNet")
+plt.loglog(Traning, CM, 'r-o', label = "CM (Base line)")
+plt.loglog(Traning, SLATM, 'k-o', label = "SLATM (State of the art)")
 plt.title("machine learning atomization energies of QM9", fontsize=18)
 plt.legend(loc='best')
 plt.show()
