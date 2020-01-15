@@ -178,7 +178,7 @@ class se3ACN(nn.Module):
         self.cloud_order = cloudord
         self.cloud_dim = cloud_dim
 
-        self.radial_layers = 5
+        self.radial_layers = nradial
         self.sp = rescaled_act.Softplus(beta=5)
         self.sh = se3cnn.SO3.spherical_harmonics_xyz
 
@@ -186,7 +186,7 @@ class se3ACN(nn.Module):
         self.emb = nn.Embedding(num_embeddings=6, embedding_dim=self.emb_dim)
 
         # Radial Model
-        self.number_of_basis = 3
+        self.number_of_basis = nbasis
         self.neighbor_radius = neighborradius
         self.RadialModel = partial(CosineBasisModel,
                                    max_radius=self.neighbor_radius,
