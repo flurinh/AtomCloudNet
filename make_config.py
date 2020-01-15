@@ -58,8 +58,9 @@ class Config:
             config_file = path + ".ini"
             self.parser = ConfigParser()
             self.parser.read(config_file)
-            self.idx = 1200
+            self.idx = 6000
 
+<<<<<<< HEAD
             model = [33]
             lr = [0.0005]
             epochs = [512]
@@ -72,6 +73,20 @@ class Config:
             nffl = [2]
             ffl1size = [256]
             emb_dim = [8]
+=======
+            model = [3]
+            lr = [0.0001]
+            epochs = [150]
+            batchsize = [24]
+            neighborradius = [3, 4]
+            nclouds = [1, 2]
+            clouddim = [4]
+            cloudord = [3]
+            resblocks = [2]
+            nffl = [2]
+            ffl1size = [256, 512]
+            emb_dim = [16]
+>>>>>>> cb4d19e84fa3f35422f778d87f56257c6b4d4154
 
             for m in model:
                 for l in lr:

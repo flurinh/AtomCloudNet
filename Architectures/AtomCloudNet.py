@@ -1,7 +1,13 @@
 from Architectures.atomcloud import *
 from Architectures.cloud_utils import *
 
+import torch.nn.functional as F
+import torch.nn as nn
+from functools import partial
+
 import se3cnn
+from se3cnn import SO3
+from se3cnn import real_spherical_harmonics
 from se3cnn.point.radial import CosineBasisModel
 import se3cnn.non_linearities as nl
 from se3cnn.non_linearities import rescaled_act
@@ -10,13 +16,20 @@ from se3cnn.point.kernel import Kernel
 from se3cnn.non_linearities import GatedBlock
 from se3cnn.point.operations import Convolution, NeighborsConvolution
 from se3cnn.point.operations import PeriodicConvolution
-import torch.nn.functional as F
-import torch.nn as nn
-from functools import partial
 
+
+def weights_init(m):
+    classname = m.__class__.__name__
+    print(classname)
+    """
+    if classname.find('collate2') != -1:
+        print("applying weight to", classname)
+        torch.nn.init.kaiming_uniform_(m.weight.data, mode='fan_in', nonlinearity='leaky_relu')
+        torch.nn.init.kaiming_uniform_(m.bias.data, mode='fan_in', nonlinearity='leaky_relu')
+    """
 
 class se3AtomCloudNet(nn.Module):
-    def __init__(self, device='cpu', nclouds = 1, natoms = 30, resblocks = 1, cloud_dim=24, neighborradius=2,
+    def __init__(self, device='cpu', nclouds=1, natoms=30, resblocks=1, cloud_dim=24, neighborradius=2,
                  nffl=1, ffl1size=128, emb_dim=32, cloudord=3):
         super(se3AtomCloudNet, self).__init__()
         self.device = device
@@ -85,11 +98,12 @@ class se3AtomCloudNet(nn.Module):
                                           gate_activation=rescaled_act.sigmoid,
                                           Operation=self.NC))
             """
-            cloud_out = self.cloud_dim * (self.cloud_order**2)
+            cloud_out = self.cloud_dim * (self.cloud_order ** 2)
             # Cloud residuals (should only be applied to final cloud)
             if self.residuals:
-                if c == (self.nclouds-1):
-                    self.clouds.append(AtomResiduals(in_channel=cloud_out, res_blocks=self.resblocks, device=self.device))
+                if c == (self.nclouds - 1):
+                    self.clouds.append(
+                        AtomResiduals(in_channel=cloud_out, res_blocks=self.resblocks, device=self.device))
                     res_out = 2 * cloud_out
             else:
                 res_out = cloud_out
@@ -111,34 +125,34 @@ class se3AtomCloudNet(nn.Module):
         self.act = nn.Sigmoid()
 
     def forward(self, xyz, features):
-        assert xyz.size()[:1] == features.size()[:1], "xyz ({}) and feature size ({}) should match"\
+        assert xyz.size()[:1] == features.size()[:1], "xyz ({}) and feature size ({}) should match" \
             .format(xyz.size(), features.size())
-        #print("0", features.size())
+        # print("0", features.size())
         features = self.emb(features)
-        #print("1", features.size())
+        # print("1", features.size())
         for _, op in enumerate(self.clouds):
             features = op(features, geometry=xyz)
             # print("Cloud: ", str(features.size()))
-        #print(features.shape)
+        # print(features.shape)
         if 'mean' in self.feature_collation:
             features = features.mean(1)
-        elif 'pool' in self.feature_collation: # not tested
+        elif 'pool' in self.feature_collation:  # not tested
             features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
         else:
             features = features.permute(0, 2, 1)
             features = self.collate(features)
-        #print(features.shape)
+        # print(features.shape)
         features = features.squeeze()
-        #print(features.shape)
+        # print(features.shape)
         for _, op in enumerate(self.collate2):
             features = F.leaky_relu(op(features))
-        #print(features.shape)
+        # print(features.shape)
         output = self.act(self.outputlayer(features))
         return output
 
 
 class se3ACN(nn.Module):
-    def __init__(self, device='cpu', nclouds = 1, natoms = 30, resblocks = 1, cloud_dim=24, neighborradius=2,
+    def __init__(self, device='cpu', nclouds=1, natoms=30, resblocks=1, cloud_dim=24, neighborradius=2,
                  nffl=1, ffl1size=128, emb_dim=32, cloudord=3, two_three=False, Z=False):
         super(se3ACN, self).__init__()
         self.device = device
@@ -164,7 +178,7 @@ class se3ACN(nn.Module):
         self.cloud_order = cloudord
         self.cloud_dim = cloud_dim
 
-        self.radial_layers = 2
+        self.radial_layers = 3
         self.sp = rescaled_act.Softplus(beta=5)
         self.sh = se3cnn.SO3.spherical_harmonics_xyz
 
@@ -188,13 +202,8 @@ class se3ACN(nn.Module):
         self.clouds = nn.ModuleList()
         # Calculate feature input dimension (depends on whether we use Z-embedding, two- & three-body interactions
         # or both.
-        dim_in = 0
-        if self.Z:
-            dim_in+=self.emb_dim
-        if self.two_three:
-            dim_in+=3
-        assert dim_in > 0, print("Either embedding dimension or two-&three-body interaction data dimension should be"
-                                 " greater than 0!")
+        dim_in = self.emb_dim
+
         # Number output features per atom (these are then stacked with cloud residuals depending on settings...)
         dim_out = self.cloud_dim
         Rs_in = [(dim_in, o) for o in range(1)]
@@ -215,6 +224,7 @@ class se3ACN(nn.Module):
 
         # Cloud residuals (should only be applied to final cloud)
         if self.final_res:
+            cloud_out += 3  # we add 2 & 3-body interactions
             self.cloud_residual = AtomResiduals(in_channel=cloud_out, res_blocks=self.resblocks, device=self.device)
             res_out = cloud_out * 2
         else:
@@ -241,24 +251,28 @@ class se3ACN(nn.Module):
         if self.two_three:
             features_23 = body23
         if features_emb is None:
-            features = features_23
+            features = features_23.float()
         else:
             if features_23 is None:
-                features = features_emb
+                features = features_emb.float()
             else:
-                features = torch.cat([features_23, features_emb], dim=2)
-
+                features = features_emb.float()
+        xyz = xyz.to(torch.float64)
+        features = features.to(torch.float64)
         feature_list = []
         for _, op in enumerate(self.clouds):
             features = op(features, geometry=xyz)
             if self.cloud_res:
                 feature_list.append(features)
+            features = features.to(torch.float64)
 
+        # TODO: CONCATENATE FEATURES-23-BODY HERE FEED THEM INTO RESIDUAL
         if self.cloud_res:
             if len(feature_list) > 1:
                 features = torch.cat(feature_list, dim=2)
 
         if self.final_res:
+            features = torch.cat([features_23.float(), features.float()], dim=2).double()
             features = self.cloud_residual(features)
 
         if 'sum' in self.feature_collation:

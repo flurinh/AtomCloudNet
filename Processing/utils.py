@@ -4,7 +4,7 @@ import glob
 import os
 import csv
 from collections import namedtuple
-from Bio.PDB import PDBParser
+# from Bio.PDB import PDBParser
 import random
 import shutil
 
@@ -92,7 +92,8 @@ def load_pdb(name, path=PATH):
     """
     Load Pdb and get for each atom xyz-coordinates, Atom type (CA, H, N, NZ etc.) and Residue type (ALA, PRO etc.)
     """
-    p = PDBParser()
+    # p = PDBParser()
+    p = None
     structure = p.get_structure(name, path + name + ".pdb")
     types = []
     xyz = []

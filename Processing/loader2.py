@@ -120,6 +120,7 @@ class qm9_loader(Dataset):
         else:
             print("Trying to load data from pickle...", self.filename, ". Total number of samples:", self.limit)
             self.__load_data__()
+            self.get_max_23()
 
     def __save_data__(self):
         if not os.path.isdir('data/pkl'):
