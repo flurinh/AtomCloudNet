@@ -132,7 +132,7 @@ class qm9_loader(Dataset):
             with open(self.filename, 'rb') as fp:
                 self.data = pickle.load(fp)
         except IOError as e:
-            print('File ' + filename + ' not found.')
+            print('File ' + self.filename + ' not found.')
             print(e.errno)
 
     def two_body(self, xyz, Z, norm=False):
