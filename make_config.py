@@ -1,7 +1,6 @@
 from configparser import ConfigParser
 import argparse
 import os
-import numpy as np
 
 # self.['SETTING']['layers'] = ast.literal_eval(config.get("section", "option"))
 
@@ -58,20 +57,20 @@ class Config:
             config_file = path + ".ini"
             self.parser = ConfigParser()
             self.parser.read(config_file)
-            self.idx = 6000
+            self.idx = 7002
 
-            model = [33]
+            model = [3]
             lr = [0.0005]
-            epochs = [512]
-            batchsize = [25]
-            neighborradius = [3, 6]
-            nclouds = [1, 2]
+            epochs = [500]
+            batchsize = [24]
+            neighborradius = [3]
+            nclouds = [1]
             clouddim = [4]
-            cloudord = [1]
+            cloudord = [3]
             resblocks = [2]
             nffl = [2]
-            ffl1size = [256]
-            emb_dim = [8]
+            ffl1size = [1024]
+            emb_dim = [128]
 
             for m in model:
                 for l in lr:
