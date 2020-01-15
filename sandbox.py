@@ -29,7 +29,7 @@ class ACN:
         print(self.hyperparams)
         self.run_id = run_id
         self.verbose = 1
-        self.val_size = .05
+        self.val_size = .1
         self.val_path = 'runs/run_{}/val_{}'.format(int(self.run_id) // 100, int(self.run_id))
         self.train_path = 'runs/run_{}/train_{}'.format(int(self.run_id) // 100, int(self.run_id))
         self.checkpoint_folder = 'models/run_{}/'.format(int(self.run_id) // 100)
@@ -96,7 +96,8 @@ class ACN:
                            resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
                            neighborradius=self.hyperparams[2],
                            nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
-                           cloudord=self.hyperparams[11], two_three=use_23_body, Z=use_Z_emb)
+                           cloudord=self.hyperparams[11], nradial=self.hyperparams[12], nbasis=self.hyperparams[13],
+                           two_three=use_23_body, Z=use_Z_emb)
         print("applying weights")
         model.apply(weights_init)
         if torch.cuda.device_count() > 1:

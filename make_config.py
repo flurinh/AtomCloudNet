@@ -57,20 +57,22 @@ class Config:
             config_file = path + ".ini"
             self.parser = ConfigParser()
             self.parser.read(config_file)
-            self.idx = 8002
+            self.idx = 8000
 
             model = [3]
             lr = [0.0005]
             epochs = [500]
             batchsize = [24]
             neighborradius = [3]
-            nclouds = [1, 2]
-            clouddim = [4, 8]
-            cloudord = [2, 3]
+            nclouds = [1]
+            clouddim = [4]
+            cloudord = [3]
             resblocks = [2]
             nffl = [2]
             ffl1size = [512]
             emb_dim = [24]
+            nradial = [2, 3, 10]
+            nbasis = [3, 10]
 
             for m in model:
                 for l in lr:
@@ -84,24 +86,29 @@ class Config:
                                                 for nf in nffl:
                                                     for ff in ffl1size:
                                                         for ed in emb_dim:
-                                                            self.idx += 1
-                                                            new_config = path + '_' + str(self.idx).zfill(5) + '.ini'
-                                                            self.parser['SETTING']['model'] = str(m)
-                                                            self.parser['SETTING']['lr'] = str(l)
-                                                            self.parser['SETTING']['neighborradius'] = str(n)
-                                                            self.parser['SETTING']['nclouds'] = str(nc)
-                                                            self.parser['SETTING']['clouddim'] = str(cd)
-                                                            self.parser['SETTING']['resblocks'] = str(rb)
-                                                            self.parser['SETTING']['nffl'] = str(nf)
-                                                            self.parser['SETTING']['ffl1size'] = str(ff)
-                                                            self.parser['SETTING']['emb_dim'] = str(ed)
-                                                            self.parser['SETTING']['epochs'] = str(e)
-                                                            self.parser['SETTING']['batchsize'] = str(b)
-                                                            self.parser['SETTING']['cloudord'] = str(co)
-                                                            if os.path.isfile(new_config):
-                                                                os.remove(new_config)
-                                                            with open(new_config, "w") as f:
-                                                                self.parser.write(f)
+                                                            for nr in nradial:
+                                                                for nb in nbasis:
+                                                                    self.idx += 1
+                                                                    new_config = path + '_' + str(self.idx).zfill(5) \
+                                                                                 + '.ini'
+                                                                    self.parser['SETTING']['model'] = str(m)
+                                                                    self.parser['SETTING']['lr'] = str(l)
+                                                                    self.parser['SETTING']['neighborradius'] = str(n)
+                                                                    self.parser['SETTING']['nclouds'] = str(nc)
+                                                                    self.parser['SETTING']['clouddim'] = str(cd)
+                                                                    self.parser['SETTING']['resblocks'] = str(rb)
+                                                                    self.parser['SETTING']['nffl'] = str(nf)
+                                                                    self.parser['SETTING']['ffl1size'] = str(ff)
+                                                                    self.parser['SETTING']['emb_dim'] = str(ed)
+                                                                    self.parser['SETTING']['epochs'] = str(e)
+                                                                    self.parser['SETTING']['batchsize'] = str(b)
+                                                                    self.parser['SETTING']['cloudord'] = str(co)
+                                                                    self.parser['SETTING']['nradial'] = str(nr)
+                                                                    self.parser['SETTING']['nbasis'] = str(nb)
+                                                                    if os.path.isfile(new_config):
+                                                                        os.remove(new_config)
+                                                                    with open(new_config, "w") as f:
+                                                                        self.parser.write(f)
 
 
 if __name__ == '__main__':

@@ -153,7 +153,7 @@ class se3AtomCloudNet(nn.Module):
 
 class se3ACN(nn.Module):
     def __init__(self, device='cpu', nclouds=1, natoms=30, resblocks=1, cloud_dim=24, neighborradius=2,
-                 nffl=1, ffl1size=128, emb_dim=32, cloudord=3, two_three=False, Z=False):
+                 nffl=1, ffl1size=128, emb_dim=32, cloudord=3, nradial=3, nbasis = 10, two_three=False, Z=False):
         super(se3ACN, self).__init__()
         self.device = device
         self.natoms = natoms

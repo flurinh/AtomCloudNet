@@ -38,4 +38,7 @@ def get_config2(run_id = 1, path = "config/config_"):
     ffl1size = int(parser['SETTING']['ffl1size'])
     emb_dim = int(parser['SETTING']['emb_dim'])
     cloudord = int(parser['SETTING']['cloudord'])
-    return model, lr, neighborradius, nclouds, clouddim, resblocks, epochs, batchsize, nffl, ffl1size, emb_dim, cloudord
+    nradial = int(parser['SETTING']['nradial'])
+    nbasis = int(parser['SETTING']['nbasis'])
+    return model, lr, neighborradius, nclouds, clouddim, resblocks, epochs, batchsize, nffl, ffl1size, emb_dim, \
+           cloudord, nradial, nbasis
