@@ -178,7 +178,7 @@ class se3ACN(nn.Module):
         self.cloud_order = cloudord
         self.cloud_dim = cloud_dim
 
-        self.radial_layers = 3
+        self.radial_layers = 5
         self.sp = rescaled_act.Softplus(beta=5)
         self.sh = se3cnn.SO3.spherical_harmonics_xyz
 
@@ -266,18 +266,18 @@ class se3ACN(nn.Module):
                 feature_list.append(features)
             features = features.to(torch.float64)
 
-        # TODO: CONCATENATE FEATURES-23-BODY HERE FEED THEM INTO RESIDUAL
         if self.cloud_res:
             if len(feature_list) > 1:
                 features = torch.cat(feature_list, dim=2)
 
+        # CONCATENATE FEATURES-23-BODY HERE FEED THEM INTO RESIDUAL
         if self.final_res:
             features = torch.cat([features_23.float(), features.float()], dim=2).double()
             features = self.cloud_residual(features)
 
         if 'sum' in self.feature_collation:
             features = features.sum(1)
-        elif 'pool' in self.feature_collation:  # not tested
+        elif 'pool' in self.feature_collation:  # not yet tested
             # torch.nn.functional.lp_pool2d(features, (1, features.shape[2]), ceil_mode=False)
             features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
 
