@@ -72,7 +72,6 @@ class Config:
             ffl1size = [256]
             emb_dim = [16]
 
-            # Todo: optimize: nffl=1, ffl1size=128, emb_dim=32
             for m in model:
                 for l in lr:
                     for e in epochs:

@@ -52,7 +52,7 @@ class ACN:
         self.batch_size = self.hyperparams[7]
         self.ngpus = 0
 
-        train_data = qm9_loader(limit=10000, path=self.train_path + '/*.xyz', type=self.type, init = True)
+        train_data = qm9_loader(limit=10000, path=self.train_path + '/*.xyz', type=self.type, init = False)
         # test_data = qm9_loader(limit=np.inf, path=self.test_path + '/*.xyz', type=self.type, init = True)
         print("\nTotal number of training samples assembled:", train_data.__len__())
 
@@ -98,6 +98,7 @@ class ACN:
         criterion = nn.MSELoss()
         mae_criterion = nn.L1Loss()
         opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1])
+        scheduler = torch.optim.lr_scheduler.StepLR(opt, step_size=10, gamma=0.2)
         model.train()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
@@ -112,7 +113,7 @@ class ACN:
         train_pbar = tqdm(self.train_loader)
         val_pbar = tqdm(self.val_loader)
 
-        min_loss = np.inf
+        min_loss = 10000
         for _ in range(self.nepochs):
 
             # TRAINING
@@ -133,7 +134,7 @@ class ACN:
                 loss = criterion(prediction, urt.to(self.device))
                 mae = mae_criterion(prediction, urt.to(self.device))
                 opt.zero_grad()
-                loss.backward()
+                mae.backward()  # can also be loss = rmse-loss
                 opt.step()
                 mae_loss = mae.cpu().item()
                 loss_ = torch.sqrt(loss).cpu().item()
@@ -142,7 +143,7 @@ class ACN:
                 ex_pred = prediction[0].cpu().detach().numpy().round(3)
                 ex_target = urt[0].cpu().detach().numpy().round(3)
                 train_pbar.set_description("train-avg-loss::{}  "
-                                           "--------  loss::{}  "
+                                           "--------  rmse-loss::{}  "
                                            "--------  mae-loss::{}  "
                                            "--------  prediction::{}  "
                                            "--------  target::{}  "
@@ -177,7 +178,7 @@ class ACN:
                 ex_pred = prediction[0].cpu().detach().numpy().round(3)
                 ex_target = urt[0].cpu().detach().numpy().round(3)
                 val_pbar.set_description("val-avg-loss::{}  "
-                                         "--------  loss::{}  "
+                                         "--------  rmse-loss::{}  "
                                          "--------  mae-loss::{}  "
                                          "--------  prediction::{}  "
                                          "--------  target::{}  "
@@ -190,7 +191,7 @@ class ACN:
             if tot_loss < min_loss:
                 torch.save(model.state_dict(), self.save_path + '.pkl')
                 min_loss = tot_loss
-
+            scheduler.step()
 
 if __name__ == '__main__':
     # run: module load python_gpu/3.7.1 gcc/6.3.0

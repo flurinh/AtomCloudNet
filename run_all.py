@@ -18,10 +18,10 @@ if __name__ == '__main__':
 
     if args.setting == 1:
         for i, f in enumerate(files):
-            ini_id = 1201 + i
+            ini_id = 1225 + i
             if ini_id > 1200:
                 print("Running configuration N°" + str(ini_id).zfill(5))
-                os.system('bsub -W 4:00 -R "rusage[mem=16382]" python sandbox.py --run ' + str(ini_id))
+                os.system('bsub -W 24:00 -R "rusage[mem=8192]" python sandbox.py --run ' + str(ini_id))
                 time.sleep(1)
                 # ssh -NfL localhost:16019:localhost:6019 hidberf@login.leonhard.ethz.ch
                 # os.system('bsub -W 24:00 python sandbox.py --run ' + str(ini_id))

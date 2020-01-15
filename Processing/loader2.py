@@ -135,6 +135,32 @@ class qm9_loader(Dataset):
             print('File ' + self.filename + ' not found.')
             print(e.errno)
 
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        prots = self.data[str(idx)]['prots_ids']
+        Z = self.data[str(idx)]['Z']
+        if self.type > 1:
+            two = self.data[str(idx)]['two'].reshape(30, 1)
+            three = self.data[str(idx)]['three'].reshape(30, 1)
+            if self.scaled:
+                two /= self.max_two
+                three /= self.max_three
+            stack = np.concatenate([Z, two, three], axis=1)
+            return torch.Tensor(self.data[str(idx)]['xyz']), \
+                   torch.LongTensor(prots), \
+                   torch.Tensor(stack), \
+                   torch.Tensor([self.data[str(idx)]['Urt']])
+        else:
+            return torch.Tensor(self.data[str(idx)]['xyz']), \
+                   torch.LongTensor(prots), \
+                   [], \
+                   torch.Tensor([self.data[str(idx)]['Urt']])
+
+    def __getfilename__(self, idx):
+        return self.data[str(idx)]['file']
+
     def two_body(self, xyz, Z, norm=False):
         dists = squareform(pdist(xyz, 'euclidean', p=2, w=None, V=None, VI=None))
         dists = dists ** 6
@@ -213,30 +239,4 @@ class qm9_loader(Dataset):
                 self.max_three = np.amax(three)
         print("max 2:", self.max_two)
         print("max 3:", self.max_three)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        prots = self.data[str(idx)]['prots_ids']
-        Z = self.data[str(idx)]['Z']
-        if self.type > 1:
-            two = self.data[str(idx)]['two'].reshape(30, 1)
-            three = self.data[str(idx)]['three'].reshape(30, 1)
-            if self.scaled:
-                two /= self.max_two
-                three /= self.max_three
-            stack = np.concatenate([Z, two, three], axis=1)
-            return torch.Tensor(self.data[str(idx)]['xyz']), \
-                   torch.LongTensor(prots), \
-                   torch.Tensor(stack), \
-                   torch.Tensor([self.data[str(idx)]['Urt']])
-        else:
-            return torch.Tensor(self.data[str(idx)]['xyz']), \
-                   torch.LongTensor(prots), \
-                   [], \
-                   torch.Tensor([self.data[str(idx)]['Urt']])
-
-    def __getfilename__(self, idx):
-        return self.data[str(idx)]['file']
 
