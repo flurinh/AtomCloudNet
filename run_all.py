@@ -23,7 +23,9 @@ if __name__ == '__main__':
                 print("Running configuration N°" + str(ini_id).zfill(5))
                 os.system('bsub -W 8:00 -R "rusage[mem=10000, ngpus_excl_p=1]" python sandbox.py --run ' + str(ini_id))
                 time.sleep(1)
-                # ssh -NfL localhost:16019:localhost:6019 hidberf@login.leonhard.ethz.ch
+                # ssh -NfL localhost:17779:localhost:7779 hidberf@login.leonhard.ethz.ch
+                # module load eth_proxy gcc/6.3.0 python_gpu/3.7.4
+                # scp -r hidberf@login.leonhard.ethz.ch:/cluster/home/hidberf/Protos/runs/run_120 /Users/modlab/PycharmProjects/Protos/runs
                 # bsub -n 1 -Is -W 1:00 -R "rusage[mem=20000, ngpus_excl_p=2]" python sandbox.py --run 3001
                 # os.system('bsub -W 24:00 python sandbox.py --run ' + str(ini_id))
                 # os.system('python sandbox.py --run ' + str(int(ini_id)))

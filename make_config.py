@@ -2,8 +2,6 @@ from configparser import ConfigParser
 import argparse
 import os
 
-# self.['SETTING']['layers'] = ast.literal_eval(config.get("section", "option"))
-
 
 class Config:
     def __init__(self, setting):

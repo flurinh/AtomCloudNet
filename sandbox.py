@@ -23,13 +23,9 @@ TEST_PATH = 'data/QM9Test'
 class ACN:
     def __init__(self,
                  run_id=1):
-        path = 'config_ACN/config_'
-        self.hyperparams = get_config2(run_id=run_id, path=path)
-        self.type = self.hyperparams[0]
-        print(self.hyperparams)
+        self.path = 'config_ACN/config_'
         self.run_id = run_id
         self.verbose = 1
-        self.val_size = .1
         self.val_path = 'runs/run_{}/val_{}'.format(int(self.run_id) // 100, int(self.run_id))
         self.train_path = 'runs/run_{}/train_{}'.format(int(self.run_id) // 100, int(self.run_id))
         self.checkpoint_folder = 'models/run_{}/'.format(int(self.run_id) // 100)
@@ -46,19 +42,85 @@ class ACN:
         if not os.path.isdir(self.checkpoint_folder):
             os.mkdir(self.checkpoint_folder)
 
-        self.val_writer = SummaryWriter(self.val_path)
-        self.train_writer = SummaryWriter(self.train_path)
-
+    def load_model_specs(self):
         self.train_path = TRAIN_PATH
         self.test_path = TEST_PATH
+        self.hyperparams = get_config2(run_id=self.run_id, path=self.path)
+        self.type = self.hyperparams[0]
+        print("MODEL SPEC", self.hyperparams)
+        self.val_size = .1
+        self.val_writer = SummaryWriter(self.val_path)
+        self.train_writer = SummaryWriter(self.train_path)
         self.batch_size = self.hyperparams[7]
         self.ngpus = 0
+        self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        print("Using device:", self.device)
+        self.use_Z_emb = False
+        self.use_23_body = False
+        if self.type == 1:
+            self.use_Z_emb = True
+        if self.type == 2:
+            self.use_23_body = True
+        if self.type == 3:
+            self.use_Z_emb = True
+            self.use_23_body = True
 
+    def eval_molecular_model(self):
+        test_data = qm9_loader(limit=5000, path=self.test_path + '/*.xyz', type=self.type, init=False)
+        test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
-        train_data = qm9_loader(limit=10000, path=self.train_path + '/*.xyz', type=self.type, init = False)
-        print(train_data.max_two)
-        print(train_data.max_three)
-        # test_data = qm9_loader(limit=np.inf, path=self.test_path + '/*.xyz', type=self.type, init = True)
+        # Load model
+        with torch_default_dtype(torch.float64):
+            print("Loading model from", self.save_path)
+            model = se3ACN(device=self.device, nclouds=self.hyperparams[3], natoms=30,
+                           resblocks=self.hyperparams[5], cloud_dim=self.hyperparams[4],
+                           neighborradius=self.hyperparams[2],
+                           nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
+                           cloudord=self.hyperparams[11], nradial=self.hyperparams[12], nbasis=self.hyperparams[13],
+                           two_three=self.use_23_body, Z=self.use_Z_emb)
+            model.load_state_dict(torch.load(self.save_path + '.pkl'), map_location=self.device)
+            model.eval()
+            tot_loss = 0
+            mae_losses = []
+            rmse_losses = []
+            test_pbar = tqdm(test_loader)
+            for i, (xyz, prot_ids, features, urt) in enumerate(test_pbar, start=1):
+                xyz = xyz.to(self.device)
+                featZ = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
+                if self.type == 1:
+                    prediction = model(xyz, featZ, None)
+                elif self.type == 2:
+                    feat23 = features.to(self.device)
+                    prediction = model(xyz, None, feat23)
+                elif self.type == 3:
+                    feat23 = features.to(self.device)
+                    prediction = model(xyz, featZ, feat23)
+                target = urt.to(self.device).double()
+                loss = criterion(prediction, target)
+                mae = mae_criterion(prediction, target)
+                loss_ = torch.sqrt(loss).cpu().item()
+                mae_loss = mae.cpu().item()
+                mae_losses.append(mae_loss)
+                rmse_losses.append(rmse_losses)
+                tot_loss += mae_loss
+                avg_loss = tot_loss / i
+                ex_pred = prediction[0].cpu().detach().numpy().round(3)
+                ex_target = urt[0].cpu().detach().numpy().round(3)
+                test_pbar.set_description("test-avg-loss::{}  "
+                                          "--------  rmse-loss::{}  "
+                                          "--------  mae-loss::{}  "
+                                          "--------  prediction::{}  "
+                                          "--------  target::{}  "
+                                          .format(avg_loss, loss_, mae_loss, ex_pred,
+                                                  ex_target))
+            results = {'rmse_losses': rmse_losses,
+                       'mae_losses': mae_losses,
+                       'avg_mae': avg_loss}
+            with open(self.save_path + '_results.txt', 'r') as file:
+                file.write(json.dumps(results))
+
+    def train_molecular_model(self):
+        train_data = qm9_loader(limit=10000, path=self.train_path + '/*.xyz', type=self.type, init=False)
         print("\nTotal number of training samples assembled:", train_data.__len__())
 
         num_train = len(train_data)
@@ -73,23 +135,8 @@ class ACN:
 
         self.train_loader = DataLoader(train_data, batch_size=self.batch_size, sampler=train_sampler)
         self.val_loader = DataLoader(train_data, batch_size=self.batch_size, sampler=val_sampler)
-        # self.test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
-
-        self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        print("Using device:", self.device)
-
         self.nepochs = self.hyperparams[6]
 
-    def train_molecular_model(self):
-        use_Z_emb = False
-        use_23_body = False
-        if self.type == 1:
-            use_Z_emb = True
-        if self.type == 2:
-            use_23_body = True
-        if self.type == 3:
-            use_Z_emb = True
-            use_23_body = True
         with torch_default_dtype(torch.float64):
             print("Generating model of type {}".format(self.type))
             model = se3ACN(device=self.device, nclouds=self.hyperparams[3], natoms=30,
@@ -97,7 +144,7 @@ class ACN:
                            neighborradius=self.hyperparams[2],
                            nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
                            cloudord=self.hyperparams[11], nradial=self.hyperparams[12], nbasis=self.hyperparams[13],
-                           two_three=use_23_body, Z=use_Z_emb)
+                           two_three=self.use_23_body, Z=self.use_Z_emb)
         print("applying weights")
         # model.apply(weights_init)
         if torch.cuda.device_count() > 1:
@@ -108,7 +155,7 @@ class ACN:
         model.to(self.device)
         criterion = nn.MSELoss()
         mae_criterion = nn.L1Loss()
-        opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1])
+        opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1], weight_decay=1e-5)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=25, verbose=True)
         model.train()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
@@ -205,6 +252,7 @@ class ACN:
             if epoch > 20:
                 scheduler.step(avg_loss)
 
+
 if __name__ == '__main__':
     # run: module load python_gpu/3.7.1 gcc/6.3.0
     # conda install -c psi4 gcc-5
@@ -213,6 +261,17 @@ if __name__ == '__main__':
     # conda env create -f environment.yml
     parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
     parser.add_argument('--run', type=int, default=109)
+    parser.add_argument('--mode', type=int, default=0)
     args = parser.parse_args()
     net = ACN(run_id=args.run)
-    net.train_molecular_model()
+    net.load_model_specs()
+    if args.mode == 0:
+        # net.train_molecular_model()
+        pass
+    elif args.mode == 1:
+        net.eval_molecular_model()
+    else:
+        pass
+        # net.train_molecular_model()
+        net.eval_molecular_model()
+
