@@ -99,9 +99,10 @@ class ACN:
                            cloudord=self.hyperparams[11], nradial=self.hyperparams[12], nbasis=self.hyperparams[13],
                            two_three=use_23_body, Z=use_Z_emb)
         print("applying weights")
-        model.apply(weights_init)
+        # model.apply(weights_init)
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
+            # https://medium.com/huggingface/training-larger-batches-practical-tips-on-1-gpu-multi-gpu-distributed-setups-ec88c3e51255
             # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
             model = torch.nn.DataParallel(model)
         model.to(self.device)
