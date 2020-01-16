@@ -57,7 +57,7 @@ class Config:
             config_file = path + ".ini"
             self.parser = ConfigParser()
             self.parser.read(config_file)
-            self.idx = 8000
+            self.idx = 11003
 
             model = [3]
             lr = [0.0005]
@@ -71,8 +71,8 @@ class Config:
             nffl = [2]
             ffl1size = [512]
             emb_dim = [24]
-            nradial = [2, 3, 10]
-            nbasis = [3, 10]
+            nradial = [3]
+            nbasis = [4]
 
             for m in model:
                 for l in lr:

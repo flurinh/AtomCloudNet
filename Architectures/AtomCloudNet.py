@@ -169,7 +169,7 @@ class se3ACN(nn.Module):
 
         self.resblocks = resblocks
         self.cloudnorm = False  # Todo: normalization of cloud kernel
-        self.feature_collation = 'sum'  # pool or else use dense layer
+        self.feature_collation = 'sum'  # pool or 'sum'
         self.nffl = nffl
         self.ffl1size = ffl1size
 
@@ -277,9 +277,12 @@ class se3ACN(nn.Module):
 
         if 'sum' in self.feature_collation:
             features = features.sum(1)
-        elif 'pool' in self.feature_collation:  # not yet tested
-            # torch.nn.functional.lp_pool2d(features, (1, features.shape[2]), ceil_mode=False)
-            features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
+        elif 'pool' in self.feature_collation:
+            # features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
+            # features = F.lp_pool2d(features, norm_type=1, kernel_size=(features.shape[1], 1), ceil_mode=False)
+            # features = F.lp_pool2d(features, norm_type=2, kernel_size=(features.shape[1], 1), ceil_mode=False)
+            features = F.max_pool2d(features, (features.shape[1], 1))
+            # print(features.shape)
 
         features = features.squeeze()
         for _, op in enumerate(self.collate):
