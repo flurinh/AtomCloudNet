@@ -1,13 +1,15 @@
 from Architectures.atomcloud import *
 from Architectures.cloud_utils import *
 
+import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from functools import partial
 
 import se3cnn
 from se3cnn import SO3
-from se3cnn import real_spherical_harmonics
+if torch.cuda.is_available():
+    from se3cnn import real_spherical_harmonics
 from se3cnn.point.radial import CosineBasisModel
 import se3cnn.non_linearities as nl
 from se3cnn.non_linearities import rescaled_act
@@ -191,19 +193,15 @@ class se3ACN(nn.Module):
         self.RadialModel = partial(CosineBasisModel,
                                    max_radius=self.neighbor_radius,
                                    number_of_basis=self.number_of_basis,
-                                   h=200, # 12004-6
+                                   h=200,
                                    L=self.radial_layers,
                                    act=self.sp)
 
         self.K = partial(se3cnn.point.kernel.Kernel, RadialModel=self.RadialModel, sh=self.sh, normalization='norm')
-        # self.NC = partial(NeighborsConvolution, self.K, self.neighbor_radius)
 
         # Cloud layers
         self.clouds = nn.ModuleList()
-        # Calculate feature input dimension (depends on whether we use Z-embedding, two- & three-body interactions
-        # or both.
         dim_in = self.emb_dim
-
         # Number output features per atom (these are then stacked with cloud residuals depending on settings...)
         dim_out = self.cloud_dim
         Rs_in = [(dim_in, o) for o in range(1)]

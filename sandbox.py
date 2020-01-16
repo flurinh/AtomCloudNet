@@ -6,6 +6,7 @@ from tqdm import tqdm, trange
 from configparser import ConfigParser
 import numpy as np
 import ast
+import json
 import os
 import pickle
 from tensorboardX import SummaryWriter  # https://sapanachaudhary.github.io/Colab-pages/x
@@ -77,9 +78,11 @@ class ACN:
                            neighborradius=self.hyperparams[2],
                            nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
                            cloudord=self.hyperparams[11], nradial=self.hyperparams[12], nbasis=self.hyperparams[13],
-                           two_three=self.use_23_body, Z=self.use_Z_emb)
-            model.load_state_dict(torch.load(self.save_path + '.pkl'), map_location=self.device)
+                           two_three=self.use_23_body, Z=self.use_Z_emb).to(self.device)
+            model.load_state_dict(torch.load(self.save_path + '.pkl', map_location=torch.device(self.device)))
             model.eval()
+            criterion = nn.MSELoss()
+            mae_criterion = nn.L1Loss()
             tot_loss = 0
             mae_losses = []
             rmse_losses = []
@@ -116,8 +119,8 @@ class ACN:
             results = {'rmse_losses': rmse_losses,
                        'mae_losses': mae_losses,
                        'avg_mae': avg_loss}
-            with open(self.save_path + '_results.txt', 'r') as file:
-                file.write(json.dumps(results))
+            with open(self.save_path + '_result.txt', 'w') as file:
+                json.dump(results, file)
 
     def train_molecular_model(self):
         train_data = qm9_loader(limit=10000, path=self.train_path + '/*.xyz', type=self.type, init=False)
@@ -146,16 +149,13 @@ class ACN:
                            cloudord=self.hyperparams[11], nradial=self.hyperparams[12], nbasis=self.hyperparams[13],
                            two_three=self.use_23_body, Z=self.use_Z_emb)
         print("applying weights")
-        # model.apply(weights_init)
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
-            # https://medium.com/huggingface/training-larger-batches-practical-tips-on-1-gpu-multi-gpu-distributed-setups-ec88c3e51255
-            # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
             model = torch.nn.DataParallel(model)
         model.to(self.device)
         criterion = nn.MSELoss()
         mae_criterion = nn.L1Loss()
-        opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1], weight_decay=1e-5)
+        opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1], weight_decay=1e-4)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=25, verbose=True)
         model.train()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
@@ -254,24 +254,17 @@ class ACN:
 
 
 if __name__ == '__main__':
-    # run: module load python_gpu/3.7.1 gcc/6.3.0
-    # conda install -c psi4 gcc-5
-    # https://scicomp.ethz.ch/wiki/Using_the_batch_system
-    # conda env export | grep -v "^prefix: " > environment.yml
-    # conda env create -f environment.yml
     parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
-    parser.add_argument('--run', type=int, default=109)
+    parser.add_argument('--run', type=int, default=13001)
     parser.add_argument('--mode', type=int, default=0)
     args = parser.parse_args()
     net = ACN(run_id=args.run)
     net.load_model_specs()
     if args.mode == 0:
-        # net.train_molecular_model()
-        pass
+        net.train_molecular_model()
     elif args.mode == 1:
         net.eval_molecular_model()
-    else:
-        pass
-        # net.train_molecular_model()
+    elif args.mode == 2:
+        net.train_molecular_model()
         net.eval_molecular_model()
 
