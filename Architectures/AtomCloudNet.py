@@ -169,7 +169,7 @@ class se3ACN(nn.Module):
 
         self.resblocks = resblocks
         self.cloudnorm = False  # Todo: normalization of cloud kernel
-        self.feature_collation = 'sum'  # pool or 'sum'
+        self.feature_collation = 'pool'  # pool or 'sum'
         self.nffl = nffl
         self.ffl1size = ffl1size
 
@@ -280,8 +280,8 @@ class se3ACN(nn.Module):
         elif 'pool' in self.feature_collation:
             # features = F.adaptive_avg_pool2d(features, (1, features.shape[2]))
             # features = F.lp_pool2d(features, norm_type=1, kernel_size=(features.shape[1], 1), ceil_mode=False)
-            # features = F.lp_pool2d(features, norm_type=2, kernel_size=(features.shape[1], 1), ceil_mode=False)
-            features = F.max_pool2d(features, (features.shape[1], 1))
+            features = F.lp_pool2d(features, norm_type=2, kernel_size=(features.shape[1], 1), ceil_mode=False)
+            # features = F.max_pool2d(features, (features.shape[1], 1))
             # print(features.shape)
 
         features = features.squeeze()
