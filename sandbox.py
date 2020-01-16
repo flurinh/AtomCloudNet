@@ -109,7 +109,7 @@ class ACN:
         criterion = nn.MSELoss()
         mae_criterion = nn.L1Loss()
         opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1])
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=20, verbose=True)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=25, verbose=True)
         model.train()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
