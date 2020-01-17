@@ -66,7 +66,7 @@ class se3AtomCloudNet(nn.Module):
         self.RadialModel = partial(CosineBasisModel,
                                    max_radius=self.neighbor_radius,
                                    number_of_basis=self.number_of_basis,
-                                   h=100,
+                                   h=300,
                                    L=self.radial_layers,
                                    act=self.sp)
 
@@ -84,22 +84,7 @@ class se3AtomCloudNet(nn.Module):
             # Cloud
             print("Rs_in", Rs_in)
             print("Rs_out", Rs_out)
-            """
-            dimensionalities = [2 * L + 1 for mult, L in Rs_out for _ in range(mult)]
-            print(dimensionalities)
-            norm_activation = nl.norm_activation.NormActivation(dimensionalities,
-                                                                rescaled_act.sigmoid,
-                                                                rescaled_act.sigmoid)
-            print(norm_activation)
-            self.clouds.append(nl.gated_block.GatedBlock(Rs_in, Rs_out, self.sp, rescaled_act.sigmoid, Operation=self.NC))
-            """
             self.clouds.append(NeighborsConvolution(self.K, Rs_in, Rs_out, self.neighbor_radius))
-            """
-            self.clouds.append(GatedBlock(Rs_in, Rs_out, 
-                                          scalar_activation=self.sp,
-                                          gate_activation=rescaled_act.sigmoid,
-                                          Operation=self.NC))
-            """
             cloud_out = self.cloud_dim * (self.cloud_order ** 2)
             # Cloud residuals (should only be applied to final cloud)
             if self.residuals:
@@ -193,7 +178,7 @@ class se3ACN(nn.Module):
         self.RadialModel = partial(CosineBasisModel,
                                    max_radius=self.neighbor_radius,
                                    number_of_basis=self.number_of_basis,
-                                   h=200,
+                                   h=150,
                                    L=self.radial_layers,
                                    act=self.sp)
 

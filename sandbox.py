@@ -68,6 +68,9 @@ class ACN:
 
     def eval_molecular_model(self):
         test_data = qm9_loader(limit=5000, path=self.test_path + '/*.xyz', type=self.type, init=False)
+        test_data.clean_outliers()
+        self.limit = test_data.limit
+
         test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
         # Load model
@@ -119,11 +122,14 @@ class ACN:
             results = {'rmse_losses': rmse_losses,
                        'mae_losses': mae_losses,
                        'avg_mae': avg_loss}
-            with open(self.save_path + '_result.txt', 'w') as file:
-                json.dump(results, file)
+            f = open(self.save_path + '_eval.txt', "wb")
+            pickle.dump(results, f)
+            f.close()
 
     def train_molecular_model(self):
-        train_data = qm9_loader(limit=10000, path=self.train_path + '/*.xyz', type=self.type, init=False)
+        train_data = qm9_loader(limit=100000, path=self.train_path + '/*.xyz', type=self.type, init=False)
+        train_data.clean_outliers()
+        self.limit = train_data.limit
         print("\nTotal number of training samples assembled:", train_data.__len__())
 
         num_train = len(train_data)
@@ -155,7 +161,7 @@ class ACN:
         model.to(self.device)
         criterion = nn.MSELoss()
         mae_criterion = nn.L1Loss()
-        opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1], weight_decay=1e-4)
+        opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1], weight_decay=1e-5)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=25, verbose=True)
         model.train()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())

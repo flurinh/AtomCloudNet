@@ -170,9 +170,8 @@ class qm9_loader(Dataset):
                           for i, j in itertools.product(range(30), range(30))])
         mask = np.where(out == 0)
         out[mask] = 1
-        # Todo: Normalization
-        for i in range(out.shape[0]):
-            if norm:
+        if norm:
+            for i in range(out.shape[0]):
                 sigma = 5
                 mu = 50
                 out[i] = 1 / (sigma * np.sqrt(mu * 2)) * np.e ** -(out[i] ** 2)
@@ -231,13 +230,26 @@ class qm9_loader(Dataset):
         return math.degrees(math.acos(num / den))
 
     def get_max_23(self):
-        for idx in range(self.limit):
-            two = self.data[str(idx)]['two']
-            if np.amax(two) > self.max_two:
-                self.max_two = np.amax(two)
-            three = self.data[str(idx)]['three']
-            if np.amax(three) > self.max_three:
-                self.max_three = np.amax(three)
+        """
+        if self.limit == 5000:
+            # this means we are in the test settings...
+            self.max_two = 38.8973590147651
+            self.max_three = 84.8842211898579
+        else:
+            for idx in range(self.limit):
+                two = self.data[str(idx)]['two']
+                if np.amax(two) > self.max_two:
+                    self.max_two = np.amax(two)
+                three = self.data[str(idx)]['three']
+                if np.amax(three) > self.max_three:
+                    self.max_three = np.amax(three)
+        """
+        self.max_two = 39.39892996416823
+        self.max_three = 93.227861810588
         print("max 2:", self.max_two)
         print("max 3:", self.max_three)
 
+    def clean_outliers(self):
+        self.data = {k: v for k, v in self.data.items() if (0 <= v['Urt'] <= 1)}
+        self.limit = len(self.data)
+        print("New data limit:", self.limit)
