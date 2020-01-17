@@ -30,8 +30,8 @@ def get_energies(filename):
 
     return energies
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     print("\n -> make dict of binding energy per molecules")
 
     data = get_energies("../data/trainDipole.txt")
