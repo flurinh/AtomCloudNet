@@ -121,6 +121,21 @@ class qm9_loader(Dataset):
             print("Trying to load data from pickle...", self.filename, ". Total number of samples:", self.limit)
             self.__load_data__()
             self.get_max_23()
+        self.clean_outliers()
+
+    def clean_outliers(self):
+        new_data = {i: _dict for i, [_, _dict] in enumerate(self.data.items()) if (0 <= _dict['Urt'] <= 1)}
+        del self.data
+        self.data = new_data
+        self.limit = len(self.data)
+        print("New data limit after removing outliers:", self.limit)
+        new_dict = {}
+        keys = [key for key in self.data.keys()]
+        for l in range(self.limit):
+            new_dict.update({str(l): self.data[keys[l]]})
+        del self.data
+        self.data = new_dict
+
 
     def __save_data__(self):
         if not os.path.isdir('data/pkl'):
@@ -248,8 +263,3 @@ class qm9_loader(Dataset):
         self.max_three = 93.227861810588
         print("max 2:", self.max_two)
         print("max 3:", self.max_three)
-
-    def clean_outliers(self):
-        self.data = {k: v for k, v in self.data.items() if (0 <= v['Urt'] <= 1)}
-        self.limit = len(self.data)
-        print("New data limit:", self.limit)

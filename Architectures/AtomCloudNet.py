@@ -30,6 +30,7 @@ def weights_init(m):
         torch.nn.init.kaiming_uniform_(m.bias.data, mode='fan_in', nonlinearity='leaky_relu')
     """
 
+
 class se3AtomCloudNet(nn.Module):
     def __init__(self, device='cpu', nclouds=1, natoms=30, resblocks=1, cloud_dim=24, neighborradius=2,
                  nffl=1, ffl1size=128, emb_dim=32, cloudord=3):
@@ -43,8 +44,8 @@ class se3AtomCloudNet(nn.Module):
         else:
             self.residuals = False
         self.resblocks = resblocks
-        self.cloudnorm = False  # Todo: normalization of cloud kernel
-        self.feature_collation = 'mean'  # pool or else use dense layer
+        self.cloudnorm = False
+        self.feature_collation = 'mean'  # pool or else use dense layer to collate features
         self.nffl = nffl
         self.ffl1size = ffl1size
 
@@ -66,7 +67,7 @@ class se3AtomCloudNet(nn.Module):
         self.RadialModel = partial(CosineBasisModel,
                                    max_radius=self.neighbor_radius,
                                    number_of_basis=self.number_of_basis,
-                                   h=300,
+                                   h=80,
                                    L=self.radial_layers,
                                    act=self.sp)
 

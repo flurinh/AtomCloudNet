@@ -55,12 +55,12 @@ class Config:
             config_file = path + ".ini"
             self.parser = ConfigParser()
             self.parser.read(config_file)
-            self.idx = 13000
+            self.idx = 14006
 
             model = [3]
             lr = [0.0005]
             epochs = [500]
-            batchsize = [72, 72, 72]
+            batchsize = [512]
             neighborradius = [3]
             nclouds = [1]
             clouddim = [4]

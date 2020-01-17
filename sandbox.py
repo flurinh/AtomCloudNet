@@ -36,22 +36,23 @@ class ACN:
             os.mkdir('runs')
         if not os.path.isdir('models'):
             os.mkdir('models')
-        if not os.path.isdir(self.checkpoint_folder):
-            os.mkdir(self.checkpoint_folder)
-        if not os.path.isdir(self.checkpoint_folder):
-            os.mkdir(self.checkpoint_folder)
+        if not os.path.isdir(self.val_path):
+            os.mkdir(self.val_path)
+        if not os.path.isdir(self.train_path):
+            os.mkdir(self.train_path)
         if not os.path.isdir(self.checkpoint_folder):
             os.mkdir(self.checkpoint_folder)
 
     def load_model_specs(self):
-        self.train_path = TRAIN_PATH
-        self.test_path = TEST_PATH
+        self.train_path_ = TRAIN_PATH
+        self.test_path_ = TEST_PATH
         self.hyperparams = get_config2(run_id=self.run_id, path=self.path)
         self.type = self.hyperparams[0]
         print("MODEL SPEC", self.hyperparams)
         self.val_size = .1
         self.val_writer = SummaryWriter(self.val_path)
         self.train_writer = SummaryWriter(self.train_path)
+        print(self.train_writer)
         self.batch_size = self.hyperparams[7]
         self.ngpus = 0
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -67,11 +68,10 @@ class ACN:
             self.use_23_body = True
 
     def eval_molecular_model(self):
-        test_data = qm9_loader(limit=5000, path=self.test_path + '/*.xyz', type=self.type, init=False)
-        test_data.clean_outliers()
+        test_data = qm9_loader(limit=5000, path=self.test_path_ + '/*.xyz', type=self.type, init=False)
         self.limit = test_data.limit
 
-        test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
+        test_loader = DataLoader(test_data, batch_size=1, shuffle=True)
 
         # Load model
         with torch_default_dtype(torch.float64):
@@ -107,7 +107,7 @@ class ACN:
                 loss_ = torch.sqrt(loss).cpu().item()
                 mae_loss = mae.cpu().item()
                 mae_losses.append(mae_loss)
-                rmse_losses.append(rmse_losses)
+                rmse_losses.append(loss_)
                 tot_loss += mae_loss
                 avg_loss = tot_loss / i
                 ex_pred = prediction[0].cpu().detach().numpy().round(3)
@@ -127,8 +127,7 @@ class ACN:
             f.close()
 
     def train_molecular_model(self):
-        train_data = qm9_loader(limit=100000, path=self.train_path + '/*.xyz', type=self.type, init=False)
-        train_data.clean_outliers()
+        train_data = qm9_loader(limit=100000, path=self.train_path_ + '/*.xyz', type=self.type, init=False)
         self.limit = train_data.limit
         print("\nTotal number of training samples assembled:", train_data.__len__())
 
@@ -161,7 +160,7 @@ class ACN:
         model.to(self.device)
         criterion = nn.MSELoss()
         mae_criterion = nn.L1Loss()
-        opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1], weight_decay=1e-5)
+        opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1], weight_decay=1e-6)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=25, verbose=True)
         model.train()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
@@ -213,9 +212,6 @@ class ACN:
                                            .format(avg_loss, loss_, mae_loss, ex_pred,
                                                    ex_target))
                 self.train_writer.add_scalar('train__loss', loss_, train_step)
-                if train_step % 1000 == 0:
-                    self.train_writer.add_text('train_prediction', str(ex_pred), train_step)
-                    self.train_writer.add_text('train_target', str(ex_target), train_step)
 
             # VALIDATION
             tot_loss = 0
@@ -249,9 +245,7 @@ class ACN:
                                          .format(avg_loss, loss_, mae_loss, ex_pred,
                                                  ex_target))
                 self.val_writer.add_scalar('val__loss', loss_, val_step)
-                if val_step % 1000 == 0:
-                    self.val_writer.add_text('val_prediction', str(ex_pred), val_step)
-                    self.val_writer.add_text('val_target', str(ex_target), val_step)
+
             if tot_loss < min_loss:
                 torch.save(model.state_dict(), self.save_path + '.pkl')
                 min_loss = tot_loss
@@ -260,8 +254,8 @@ class ACN:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Specify setting (generates all corresponding .ini files).')
-    parser.add_argument('--run', type=int, default=13001)
+    parser = argparse.ArgumentParser(description='Specify setting.')
+    parser.add_argument('--run', type=int, default=14003)
     parser.add_argument('--mode', type=int, default=0)
     args = parser.parse_args()
     net = ACN(run_id=args.run)

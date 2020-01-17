@@ -1,13 +1,13 @@
 # AtomCloudNet
 
 Our network architecture is looking at the neighborhood of each atom in a given chemical space. The surrounding "cloud" of atoms then feed into the generation of new features describing the whole state of the atom.
-After multiple steps of updating atom-features based on surrounding clouds features propagate through the molecule reaching more distant atoms.
+After updating atom-features based on its surroundings features propagate through the molecule reaching more distant atoms. Optionally after the cloud-convolution we can extend the feature-space by concatenating translation- and rotation-invariant features (e.g. sum over all 2- and 3-body-interactions) and the previously generated atomic features.
 
-The resulting (depending on the network architecture intermediate) molecular representation could be used to investigate specific features of atoms or they
+The atomic feature space is collapsed via global pooling over all atoms for each feature.
+
+The resulting molecular representation could be used to investigate specific features of atoms or they
 can be collapsed and fed into a feed forward architecture to derive chemical properties of the whole molecule.
 
-The "AtomCloudNet"-architecture is based on the point-convolution architecture which is highly performant in similar tasks in machine learning, such as
- surface segmentation or object detection.
 
 ## Why AtomClouds?
 
@@ -21,25 +21,18 @@ where we have disconnected graphs interacting (e.g. in a protein between disconn
 protein and ligands, ...).
 - compared to feature-selection based models: Some of the very best descriptions of chemical space are very time-consuming 
 to obtain (DFT, coupled-cluster calculation). Our model could be trained to predict an approximation of such 
-features (as shown with similar approaches, e.g. Schnet, Schnorb) in a fraction of the time required to calculate them.
-This could open the path to real-time calculation of highly informative descriptions of chemical space and give rise 
+features in a fraction of the time required to calculate them.
+This opens the path to real-time calculation of highly informative descriptions of chemical space and give rise 
 to more performant models by using these resultant approximate features for the prediction of chemical properties.
 
-## Challenge of AtomNet
-
-There are several challenges in making this architecture work. Choosing the neighborhood of an atom for example is not done via
-calculation of euclidean distance, but instead selection of the coulomb-environment (closest neighbor has highest coulomb-
-interaction). 
+## Challenge of AtomCloudNet
 
 The most difficult task is "How to combine the neighborhoods atoms features in a meaningful, descriptive way?" 
-AtomCloudNet takes neighbors features, stacks them and applies a convolution layer (similar to PointNet++).
-However given the high relevance of spatial directions in modelling relations in AtomClouds we consider the implementation of
-kernels in 3D space to provide easy access to modelling the chemical space.
+AtomCloudNet uses a translation- and rotation-invariant kernel based on spherical harmonics.
 
-## Reading Material:
+The kernel has been described and implemented for pytorch here: https://github.com/mariogeiger/se3cnn
 
-http://proceedings.mlr.press/v54/xie17a/xie17a-supp.pdf
-https://arxiv.org/pdf/1711.08920.pdf
-https://medium.com/@samramasinghe/spherical-convolution-a-theoretical-walk-through-98e98ee64655
-https://arxiv.org/pdf/1801.10130.pdf
-https://github.com/jonas-koehler/s2cnn
+
+## Dataset
+
+We use the well-known QM9 dataset (http://quantum-machine.org/datasets) to predict molecular properties and evaluate our network.
