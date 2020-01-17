@@ -26,8 +26,8 @@ def get_energies(filename):
 
     return energies
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     print("\n -> load binding energies")
 
     data = get_energies("data/trainUrt.txt")
