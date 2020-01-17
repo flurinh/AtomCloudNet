@@ -2,6 +2,7 @@ from Architectures.AtomCloudNet import *
 from Processing.loader2 import *
 from utils import *
 
+from collections import OrderedDict
 from tqdm import tqdm, trange
 from configparser import ConfigParser
 import numpy as np
@@ -52,7 +53,6 @@ class ACN:
         self.val_size = .1
         self.val_writer = SummaryWriter(self.val_path)
         self.train_writer = SummaryWriter(self.train_path)
-        print(self.train_writer)
         self.batch_size = self.hyperparams[7]
         self.ngpus = 0
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -70,8 +70,7 @@ class ACN:
     def eval_molecular_model(self):
         test_data = qm9_loader(limit=5000, path=self.test_path_ + '/*.xyz', type=self.type, init=False)
         self.limit = test_data.limit
-
-        test_loader = DataLoader(test_data, batch_size=1, shuffle=True)
+        test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
         # Load model
         with torch_default_dtype(torch.float64):
@@ -82,7 +81,15 @@ class ACN:
                            nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
                            cloudord=self.hyperparams[11], nradial=self.hyperparams[12], nbasis=self.hyperparams[13],
                            two_three=self.use_23_body, Z=self.use_Z_emb).to(self.device)
-            model.load_state_dict(torch.load(self.save_path + '.pkl', map_location=torch.device(self.device)))
+            state_dict = torch.load(self.save_path + '.pkl', map_location=torch.device(self.device))
+            if 14000 < self.run_id < 14004:
+                new_state_dict = OrderedDict()
+                for k, v in state_dict.items():
+                    name = k[7:]  # remove module.
+                    new_state_dict[name] = v
+                model.load_state_dict(new_state_dict)
+            else:
+                model.load_state_dict(state_dict)
             model.eval()
             criterion = nn.MSELoss()
             mae_criterion = nn.L1Loss()
@@ -93,14 +100,8 @@ class ACN:
             for i, (xyz, prot_ids, features, urt) in enumerate(test_pbar, start=1):
                 xyz = xyz.to(self.device)
                 featZ = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
-                if self.type == 1:
-                    prediction = model(xyz, featZ, None)
-                elif self.type == 2:
-                    feat23 = features.to(self.device)
-                    prediction = model(xyz, None, feat23)
-                elif self.type == 3:
-                    feat23 = features.to(self.device)
-                    prediction = model(xyz, featZ, feat23)
+                feat23 = features.to(self.device)
+                prediction = model(xyz, featZ, feat23)
                 target = urt.to(self.device).double()
                 loss = criterion(prediction, target)
                 mae = mae_criterion(prediction, target)

@@ -245,20 +245,6 @@ class qm9_loader(Dataset):
         return math.degrees(math.acos(num / den))
 
     def get_max_23(self):
-        """
-        if self.limit == 5000:
-            # this means we are in the test settings...
-            self.max_two = 38.8973590147651
-            self.max_three = 84.8842211898579
-        else:
-            for idx in range(self.limit):
-                two = self.data[str(idx)]['two']
-                if np.amax(two) > self.max_two:
-                    self.max_two = np.amax(two)
-                three = self.data[str(idx)]['three']
-                if np.amax(three) > self.max_three:
-                    self.max_three = np.amax(three)
-        """
         self.max_two = 39.39892996416823
         self.max_three = 93.227861810588
         print("max 2:", self.max_two)
