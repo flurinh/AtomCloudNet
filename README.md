@@ -1,6 +1,6 @@
 # AtomCloudNet
 
-Our network architecture is looking at the neighborhood of each atom in a given chemical space. The surrounding "cloud" of atoms then feed into the generation of new features describing the whole state of the atom.
+Our network architecture is looking at the neighborhood of each atom in a given chemical space. The surrounding "cloud" of atoms then feeds into the generation of new features describing the whole state of the atom.
 After updating atom-features based on its surroundings features propagate through the molecule reaching more distant atoms. Optionally after the cloud-convolution we can extend the feature-space by concatenating translation- and rotation-invariant features (e.g. sum over all 2- and 3-body-interactions) and the previously generated atomic features.
 
 The atomic feature space is collapsed via global pooling over all atoms for each feature.
@@ -32,7 +32,45 @@ AtomCloudNet uses a translation- and rotation-invariant kernel based on spherica
 
 The kernel has been described and implemented for pytorch here: https://github.com/mariogeiger/se3cnn
 
-
 ## Dataset
 
 We use the well-known QM9 dataset (http://quantum-machine.org/datasets) to predict molecular properties and evaluate our network.
+
+## Installation
+
+Create a conda environment: "conda env create -f environment.yml"
+(Run with "conda activate ChemEnv37")
+This installs most dependencies can be installed with the provided .yml file.
+
+To run our code you will need the dependencies handling SE(3) point convolution kernel:
+
+"pip install git+https://github.com/AMLab-Amsterdam/lie_learn"
+"pip install git+https://github.com/se3cnn/se3cnn"
+
+
+
+## Analysis
+
+Unzip the .zip data and .zip model folders.
+Paths should be:
+
+data/pkl/data_100000.pkl ...
+model/run_140/model_14001.pkl ...
+
+To train a model run:
+
+"python sandbox.py"
+
+To load a model and evaluate it on the testset:
+
+"python sandbox.py --mode 1"
+
+The results can be plotted by running:
+
+"python plot_results.py"
+
+
+## AtomCloudNet Paper
+
+
+

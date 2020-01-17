@@ -14,7 +14,7 @@ def evaluation(run=13002):
 
 
 def load(run):
-    file = '../models/run_'+str(run//100)+'/model_'+str(run)+'_eval.txt'
+    file = 'models/run_'+str(run//100)+'/model_'+str(run)+'_eval.txt'
     f = open(file, 'rb')
     print('opening file', f)
     results = pickle.load(f)
