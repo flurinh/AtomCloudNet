@@ -83,8 +83,6 @@ class se3AtomCloudNet(nn.Module):
 
         for c in range(self.nclouds):
             # Cloud
-            print("Rs_in", Rs_in)
-            print("Rs_out", Rs_out)
             self.clouds.append(NeighborsConvolution(self.K, Rs_in, Rs_out, self.neighbor_radius))
             cloud_out = self.cloud_dim * (self.cloud_order ** 2)
             # Cloud residuals (should only be applied to final cloud)
@@ -195,9 +193,6 @@ class se3ACN(nn.Module):
 
         for c in range(self.nclouds):
             # Cloud
-            print("Cloud {}".format(c))
-            print("Rs_in", Rs_in)
-            print("Rs_out", Rs_out)
             self.clouds.append(NeighborsConvolution(self.K, Rs_in, Rs_out, self.neighbor_radius))
             Rs_in = Rs_out
 
