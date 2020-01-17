@@ -31,7 +31,7 @@ def qm9_xyz(filepath):
                 prots.append(int(
                     line[0].replace("N", "7").replace("C", "6").replace("H", "1").replace("F", "9").replace("O", "8")))
                 prot_ids.append(int(
-                    line_.replace('H', '0').replace('C', '1').replace('N', '2').replace('O', '3').replace('F', '4')
+                    line_.replace('H', '1').replace('C', '2').replace('N', '3').replace('O', '4').replace('F', '5')
                 ))
                 types = {'H': 0, 'C': 1, 'N': 2, 'O': 3, 'F': 4}
                 x[:] = list(map(float, line[1:4]))

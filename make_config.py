@@ -60,7 +60,7 @@ class Config:
             model = [3]
             lr = [0.0005]
             epochs = [500]
-            batchsize = [512]
+            batchsize = [72, 128, 256]
             neighborradius = [3]
             nclouds = [1]
             clouddim = [4]

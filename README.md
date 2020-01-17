@@ -68,7 +68,7 @@ To load a model and evaluate it on the testset:
 
 The results can be plotted by running:
 
-"python plot_results.py"
+"python results.py"
 
 
 ## AtomCloudNet Paper

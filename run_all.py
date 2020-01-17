@@ -27,7 +27,7 @@ if __name__ == '__main__':
                 # module load eth_proxy gcc/6.3.0 python_gpu/3.7.4
                 # scp -r hidberf@login.leonhard.ethz.ch:/cluster/home/hidberf/Protos/runs/run_140 "C:/Users/Flurin Hidber/PycharmProjects/Protos/runs"
                 # scp -r "C:/Users/Flurin Hidber/PycharmProjects/Protos/data/pkl/data_100000.pkl" hidberf@login.leonhard.ethz.ch:/cluster/home/hidberf/Protos/data/pkl
-                # bsub -n 1 -Is -W 1:00 -R "rusage[mem=20000, ngpus_excl_p=2]" python sandbox.py --run 3001
+                # bsub -n 1 -Is -W 1:00 -R "rusage[mem=20000, ngpus_excl_p=2]" python sandbox.py --run 14001
                 # os.system('bsub -W 24:00 python sandbox.py --run ' + str(ini_id))
                 # os.system('python sandbox.py --run ' + str(int(ini_id)))
                 # run: module load python_gpu/3.7.1 gcc/6.3.0

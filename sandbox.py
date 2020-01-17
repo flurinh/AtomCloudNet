@@ -1,5 +1,5 @@
 from Architectures.AtomCloudNet import *
-from Processing.loader2 import *
+from Processing.loader import *
 from utils import *
 
 from collections import OrderedDict
@@ -162,7 +162,7 @@ class ACN:
         criterion = nn.MSELoss()
         mae_criterion = nn.L1Loss()
         opt = torch.optim.Adam(model.parameters(), lr=self.hyperparams[1], weight_decay=1e-6)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=25, verbose=True)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=5, verbose=True)
         model.train()
         model_parameters = filter(lambda p: p.requires_grad, model.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
@@ -250,7 +250,7 @@ class ACN:
             if tot_loss < min_loss:
                 torch.save(model.state_dict(), self.save_path + '.pkl')
                 min_loss = tot_loss
-            if epoch > 20:
+            if epoch > 2:
                 scheduler.step(avg_loss)
 
 
