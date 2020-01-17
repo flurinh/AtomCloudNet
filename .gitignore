@@ -1,11 +1,9 @@
 data
 data.zip
-test.py
-data2
-hist
-qm9_data
 cache
 runs
 models
 se3cnn-point
-sldkfj.py
+tensorboard.py
+make_config.py
+run_all.py
