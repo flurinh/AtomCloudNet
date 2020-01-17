@@ -55,6 +55,7 @@ Unzip the .zip data and .zip model folders.
 Paths should be:
 
 data/pkl/data_100000.pkl ...
+
 model/run_140/model_14001.pkl ...
 
 To train a model run:
