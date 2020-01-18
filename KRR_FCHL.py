@@ -10,6 +10,10 @@ from qml.kernels import laplacian_kernel, gaussian_kernel
 from qml.fchl import get_local_kernels
 from tqdm import tqdm
 
+"""
+Function to get binding energies.
+"""
+
 def get_energies(filename):
 
     f = open(filename, "r")
@@ -26,6 +30,9 @@ def get_energies(filename):
 
     return energies
 
+"""
+Generating dict with binding energies and filename.
+"""
 
 if __name__ == "__main__":
     print("\n -> load binding energies")
@@ -52,6 +59,11 @@ if __name__ == "__main__":
         mol.generate_slatm(mbtypes, local=False)
     for mol in tqdm(mols_test):
         mol.generate_slatm(mbtypes, local=False)
+        
+    
+    """
+    Setting hyperparameters.
+    """
 
     N = [100, 1000, 2000, 5000, 9986]
     nModels = 10
@@ -71,7 +83,11 @@ if __name__ == "__main__":
     print("\n -> calculating kernels")
 
     random.seed(667)
-
+    
+    """
+    Calculating kernel functions and crossvalidation.
+    """
+    
     print("\n -> calculating cross validation and predictions")
     for j in tqdm(range(len(sigmas))):
 
