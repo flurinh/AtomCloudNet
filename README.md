@@ -80,7 +80,8 @@ python results.py
 
 ## AtomCloudNet Paper
 
-[embed]http://example.com/file.pdf[/embed]
+Our paper about AtomCloudNet, some chemical insights and other literature.
+[embed]https://github.com/flurinh/AtomCloudNet/blob/master/paper/AtomCloudNet.pdf[/embed]
 
 
 
