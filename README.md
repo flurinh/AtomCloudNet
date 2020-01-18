@@ -27,20 +27,22 @@ to more performant models by using these resultant approximate features for the 
 
 ## Challenge of AtomCloudNet
 
-The most difficult task is "How to combine the neighborhoods atoms features in a meaningful, descriptive way?" 
+How to combine the neighborhoods atoms features in a meaningful, descriptive way?
 AtomCloudNet uses a translation- and rotation-invariant kernel based on spherical harmonics.
 
-The kernel has been described and implemented for pytorch here: https://github.com/mariogeiger/se3cnn
+The kernel has been described and implemented for pytorch [here](https://github.com/mariogeiger/se3cnn) and a useful tutorial
+on the application can be found [here](https://blondegeek.github.io/e3nn_tutorial/).
+
 
 ## Dataset
 
-We use the well-known QM9 dataset (http://quantum-machine.org/datasets) to predict molecular properties and evaluate our network.
+We use the well-known [QM9 dataset](http://quantum-machine.org/datasets) to predict molecular properties and train our network.
 
 ## Installation
 
 Create a conda environment: 
 ```
-"conda env create -f environment.yml"
+conda env create -f environment.yml
 ```
 This installs most dependencies, but to run our code you will need the dependencies handling SE(3) point convolution:
 ```
@@ -54,24 +56,31 @@ This installs most dependencies, but to run our code you will need the dependenc
 Unzip the .zip data and .zip model folders.
 Paths should be:
 
-data/pkl/data_100000.pkl ...
-
-model/run_140/model_14001.pkl ...
+* data / pkl / data_10000.pkl
+* model / run_140 / model_14001.pkl
 
 To train a model run:
 
-"python sandbox.py"
+```
+python sandbox.py --run 13003
+```
 
 To load a model and evaluate it on the testset:
 
-"python sandbox.py --mode 1"
+```
+python sandbox.py --run 13003 --mode 1
+```
 
 The results can be plotted by running:
 
-"python results.py"
+```
+python results.py
+```
 
 
 ## AtomCloudNet Paper
+
+[embed]http://example.com/file.pdf[/embed]
 
 
 
