@@ -3,47 +3,86 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-TITLES = {}
+TITLES = {13003: 'ACN, 10k, batchsize 72',
+          14001: 'ACN, 100k, batchsize 72',
+          14003: 'ACN, 100k, batchsize 128',
+          14004: 'ACN, 10k, batchsize 72',
+          14006: 'ACN, 10k, batchsize 128',
+          # 14007: 'ACN, 10k, batchsize 128',
+          # 14008: 'ACN, 10k, batchsize 128',
+          15001: 'ACN, 10k, radius 3, batchsize 72',
+          15002: 'ACN, 10k, radius 4, batchsize 72',
+          15003: 'ACN, 10k, radius 5, batchsize 72',
+          15004: 'ACN, 100, radius 3, batchsize 8',
+          15005: 'ACN, 1000, radius 3, batchsize 72',
+          15007: 'ACN, 100, radius 4, batchsize 8',
+          15008: 'ACN, 100, radius 5, batchsize 8',
+          15009: 'ACN, 1000, radius 4, batchsize 8',
+          15010: 'ACN, 1000, radius 5, batchsize 8',
+          }
 
-def evaluation(run):
+# RUNS = [14001, 14003, 14004, 14006, 15001, 15002, 15003, 15004, 15006, 15007, 15008, 15009, 15010]
+# RUNS = [14001, 14003, 14004, 14006, 15004, 15007, 15008, 15009, 15010]
+RUNS = [13003]
+
+
+def evaluation(run, number_outliers = 6, print_outliers=True, plot_outliers=False, print_model_specs=True):
     # careful --> have to run test-run with batchsize 1 otw std will be off
+    print("")
+    print("")
+    print("")
+    print("")
+    print("RUN: ", run)
+    print("")
     n, mae, rmse, p, t = load_eval(run)
     avg_mae = np.mean(mae)
     std_mae = np.std(mae)
     avg_rmse = np.mean(rmse)
     std_rmse = np.std(rmse)
-    idx_outliers = outliers(n, p, t, n_outliers = 10)
-    plot_pred_tar(p, t, idx_outliers, n)
+    idx_outliers = outliers(p, t, n_outliers=number_outliers)
+    if print_outliers:
+        print("Outliers: ", [n[idx] for idx in idx_outliers])
+    if print_model_specs:
+        print(TITLES[run])
+    if plot_outliers:
+        plot_pred_tar(run, p * 630 * 400, t * 630 * 400, idx_outliers, names=n)
+    else:
+        plot_pred_tar(run, p * 630 * 400, t * 630 * 400)
     return avg_mae, std_mae, avg_rmse, std_rmse
 
 
 def outliers(pred, targets, n_outliers, mode='mae'):
     if mode is 'mae':
-        diff = cal_mae(pred, targets)
+        diff = cal_mae(pred, targets).flatten()
     if mode is 'rmse':
-        diff = cal_rmse(pred, targets)
-    return (-diff).argsort()[:n_outliers]
+        diff = cal_rmse(pred, targets).flatten()
+    return diff.argsort()[-n_outliers:][::-1]
 
 
-def plot_pred_tar(title, runpred, target, idx_outliers=None, names=None):
-    w = [0.66715174, 1.02072885, 0.97581753, 0.99144229, 1.06441079, 1.02803944, 1.05230331, 0.87701009, 0.99043134,
-         1.07949002, 0.79217865, 0.84969539, 0.98805825, 0.95700719, 0.95026552, 0.91982687, 0.80053463, -0.13962154,
-         0.00486584, 0.15993667, 0.04408516, 0.00264467, -0.00164806, 0.15121694, 0.08060598, 0.09944911, -0.06250272,
-         0.01597039, -0.02812696, 0.03139001, -0.10828583, 0.35942502, 0.03599929, 0.03066193, -0.12643404, 0.04610165,
-         -0.0046145]
-    v = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    w = [(i * 3.52 + 4.48) for i in w]
-    v = [(i * 3.52 + 4.48) for i in v]
-    plt.scatter(pred, target, c="b", label ="")
-    plt.xlabel("predicted", fontsize = 14)
-    plt.ylabel("real", fontsize=14)
-    plt.tick_params(axis='', labelsize = 12)
-    plt.tick_params(axis=‘y’, labelsize = 12)
-    plt.title(title, fontsize = 18)
-    plt.legend(loc=‘right’)
-    plt.show()
-    pass
-
+def plot_pred_tar(run_id, pred, target, idx_outliers=None, names=None, show=False):
+    line = np.linspace(0, 630, 1000)
+    if idx_outliers is None:
+        plt.scatter(pred, target, c='b')
+        plt.xlabel(r'real $U_{rt}$ [kcal/mol]', fontsize=14)
+        plt.ylabel(r'predicted $U_{rt}$ [kcal/mol]', fontsize=14)
+        plt.plot(line, line, 'k-')
+    else:
+        plt.scatter(pred, target, c='b', )
+        plt.scatter(pred[idx_outliers], target[idx_outliers], c='r')
+        plt.xlabel(r'real $U_{rt}$ [kcal/mol]', fontsize=14)
+        plt.ylabel(r'predicted $U_{rt}$ [kcal/mol]', fontsize=14)
+        for i, (x, y) in enumerate(zip(pred[idx_outliers], target[idx_outliers])):
+            label = names[idx_outliers[i]][-10:-4]
+            plt.annotate(label, (x, y), textcoords="offset points", xytext=(0, 10), ha='center')
+        plt.plot(line,line,'k-')
+    plt.tick_params(axis='x', labelsize=12)
+    plt.tick_params(axis='y', labelsize=12)
+    plt.title(TITLES[run_id], fontsize=18)
+    plt.savefig('plots/eval_'+str(run_id)+'.png', dpi=1200)
+    if show:
+        plt.show()
+    plt.close()
+    return
 
 
 def load_eval(run):
@@ -52,7 +91,7 @@ def load_eval(run):
     print('Reading file', file)
     results = pickle.load(f)
     predictions = results['predictions']
-    targets = results['argets']
+    targets = results['targets']
     names = results['names']
     p = []
     t = []
@@ -79,10 +118,9 @@ def cal_rmse(x, y):
 
 
 if __name__ == '__main__':
-    run = 14007
-    output = {}
-    eval_ = evaluation(run)
-    output.update({str(run): eval_})
-    print(('Run {}: MAE average: {}  ---   MAE standard deviation: {}'
-           '\n        RMSE average: {}  ---  RMSE standard deviation: {}')
-          .format(run, eval_[0], eval_[1], eval_[2], eval_[3]))
+    my_run = [14001]
+    for run in RUNS:
+        eval_ = evaluation(run)
+        print(('Run {}: MAE average: {}  ---   MAE standard deviation: {}'
+               '\n        RMSE average: {}  ---  RMSE standard deviation: {}')
+              .format(run, eval_[0], eval_[1], eval_[2], eval_[3]))

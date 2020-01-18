@@ -27,7 +27,7 @@ if __name__ == '__main__':
             ini_id = 15001 + i
             if ini_id > 15000:
                 print("Running configuration N°" + str(ini_id).zfill(5))
-                os.system('bsub -W 12:00 -R "rusage[mem=10000, ngpus_excl_p=1]" python sandbox.py --run ' + str(ini_id))
+                os.system('bsub -W 12:00 -R "rusage[mem=10000, ngpus_excl_p=1]" python sandbox.py --run ' + str(ini_id) + '')
                 time.sleep(1)
                 # ssh -NfL localhost:17779:localhost:7779 hidberf@login.leonhard.ethz.ch
                 # module load eth_proxy gcc/6.3.0 python_gpu/3.7.4
