@@ -55,8 +55,7 @@ python results.py
 
 ## AtomCloudNet Paper
 
-Our paper about AtomCloudNet, some chemical insights and other literature.
-[embed]https://github.com/flurinh/AtomCloudNet/blob/master/paper/AtomCloudNet.pdf
+Here is our paper about [AtomCloudNet](https://github.com/flurinh/AtomCloudNet/blob/master/paper/AtomCloudNet.pdf), some chemical insights and other literature.
 
 
 
