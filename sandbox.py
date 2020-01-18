@@ -70,6 +70,11 @@ class ACN:
             self.use_23_body = True
 
     def eval_molecular_model(self):
+        """
+        Evaluation of the trained model. An evaluation file is created in the models/run_xxx folder is created, which
+        can be evaluated with our "results.py" file.
+        :return:
+        """
         test_data = qm9_loader(limit=5000, path=self.test_path_ + '/*.xyz', type=self.type, init=False, test=True)
         test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
@@ -84,7 +89,8 @@ class ACN:
                            two_three=self.use_23_body, Z=self.use_Z_emb).to(self.device)
             state_dict = torch.load(self.save_path + '.pkl', map_location=torch.device(self.device))
 
-            if self.run_id == 14003 or self.run_id == 14006:
+            if self.run_id == 14003 or self.run_id == 14006 or self.run_id == 15001 or self.run_id == 15002 or \
+                    self.run_id == 15003 or self.run_id == 15006:
                 new_state_dict = OrderedDict()
                 for k, v in state_dict.items():
                     name = k[7:]  # remove module.
@@ -140,6 +146,10 @@ class ACN:
             f.close()
 
     def train_molecular_model(self):
+        """
+        Training settings
+        :return:
+        """
         train_data = qm9_loader(limit=1000, path=self.train_path_ + '/*.xyz', type=self.type, init=False)
         self.limit = train_data.limit
         print("\nTotal number of training samples assembled:", train_data.__len__())

@@ -38,15 +38,15 @@ We use the well-known QM9 dataset (http://quantum-machine.org/datasets) to predi
 
 ## Installation
 
-Create a conda environment: "conda env create -f environment.yml"
-(Run with "conda activate ChemEnv37")
-This installs most dependencies, but...
-
-To run our code you will need the dependencies handling SE(3) point convolution kernel:
-
+Create a conda environment: 
+```
+"conda env create -f environment.yml"
+```
+This installs most dependencies, but to run our code you will need the dependencies handling SE(3) point convolution:
+```
 "pip install git+https://github.com/AMLab-Amsterdam/lie_learn"
 "pip install git+https://github.com/se3cnn/se3cnn"
-
+```
 
 
 ## Analysis

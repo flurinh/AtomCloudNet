@@ -1,25 +1,38 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+"""
+AtomCloudModels were run and evaluated in configuration settings (corresponds to config_file id):
+To get the values below follow instructions on github to train and evaluate a model with "sandbox.py" and "results.py",
+they were manually added here.
+ 
+cloud radius        10k samples         1k samples      100 samples
 
-CM = [3856.8972569057287, 509.44264298281587, 253.58362807398674, 102.24166779382695, 50.82365534658731]
-SLATM = [541.7630338973415, 14.546501865038607, 7.007622737762912, 3.495302292965314, 2.2828617615041113]
+3                   13003               15005           15005
+4                   15002               15009           15007
+5                   15003               15010           15008
+
+"""
+
+CM = [3856.8972569057287, 509.44264298281587, 253.58362807398674, 102.24166779382695, 50.8236553465873]
+SLATM = [541.7630338973415, 14.546501865038607, 7.007622737762912, 2.495302292965314, 1.2828617615041113]
 Traning = [100, 1000, 2000, 5000, 10000]
-StdCM = [0.15217299649321853, 0.01623470576872112, 0.005203141096532805 , 0.0014784175028615585, 0]
-StdSLATM = [0.27832101126536674, 0.0019484438815888065, 0.000803575696966312, 0.000033652891644, 0]
-StdCM = [i * 630 for i in StdCM]
-StdSLATM = [i * 630 for i in StdSLATM]
-Atm = [0.40411114798679526 * 630]
+ACN3 = [0.04549915399112006, 0.017281286622418325, 0.0005205715925826579]
+s3 = [x * (630 * 400) for x in ACN3]
+ACN4 = [0.062323461389267865, 0.01897340647880035, 0.0029883508606623993]
+s4 = [x * (630 * 400) for x in ACN4]
+ACN5 = [0.06332461197562213,  0.06448201962395173, 0.004551845370080491]
+s5 = [x * (630 * 400) for x in ACN5]
 
-
-
-plt.xlabel("Training set size", fontsize=14)
-plt.ylabel("MAE[kcal/mol]", fontsize=14)
-plt.tick_params(axis='x', labelsize=16)
-plt.tick_params(axis='y', labelsize=16)
-plt.loglog([10000], Atm, 'g-o', label = "AtomCloudNet")
-plt.loglog(Traning, CM, 'r-o', label = "CM (Base line)")
+plt.figure(figsize=(15, 15))
+plt.xlabel("Training set size", fontsize=24)
+plt.ylabel("MAE[kcal/mol]", fontsize=24)
+plt.tick_params(axis='x', labelsize=26)
+plt.tick_params(axis='y', labelsize=26)
+plt.loglog([100, 1000, 10000], s3, 'b-o', label = "AtomCloudNet (Ours), r = 3")
+plt.loglog([100, 1000, 10000], s4, 'g-o', label = "AtomCloudNet (Ours), r = 4")
+plt.loglog([100, 1000, 10000], s5, 'c-o', label = "AtomCloudNet (Ours), r = 5")
+plt.loglog([100, 1000, 2000, 5000, 10000], CM, 'r-o', label = "CM (Base line)")
 plt.loglog(Traning, SLATM, 'k-o', label = "SLATM (State of the art)")
-plt.title("machine learning atomization energies of QM9", fontsize=18)
-plt.legend(loc='best')
-plt.show()
+plt.legend(loc='best', fontsize=24)
+plt.savefig('Learning_Curve_Comparision.png')

@@ -3,16 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from time import time
 import numpy as np
-
-
-def get_centroids(xyz, features=None):
-    #print("Centroid:", xyz[:, 0, 32])
-    #print("Centroid:", xyz[:, 1, 32])
-    #print("Centroid:", xyz[:, 2, 32])
-    ids_x = torch.where(xyz[:, 0, :] == 0)
-    ids_y = torch.where(xyz[:, 1, :] == 0)
-    ids_z = torch.where(xyz[:, 2, :] == 0)
-    return features[ids_x]
+# This is code mostly used by a previous iteration of Atomcloud not not using se3cnn kernels, but left in the repository
+# since together with the atomcloud.py file more simple models can be written.
 
 
 def cloud_sampling(xyz, Z, natoms, radius=None, include_self=True, mode='distance'):
@@ -28,7 +20,6 @@ def cloud_sampling(xyz, Z, natoms, radius=None, include_self=True, mode='distanc
     """
     cloud_dists = None  # [B, N]  # distance vectors
     clouds = []  # [B, N, N]  # mask
-
     if mode is 'potential' and Z is not None:
         dists = inverse_coulomb_dist(xyz, Z)
     else:
@@ -89,6 +80,12 @@ def inverse_coulomb_dist(xyz, Z):
     return dist / qq
 
 
-def electrostatic_dist(xyz, features):
-    # q * q / r
-    return None
+def get_centroids(xyz, features=None):
+    """
+    Get features of centroid in chemical space
+    :param xyz:
+    :param features:
+    :return:
+    """
+    ids_x = torch.where(xyz[:, 0, :] == 0)
+    return features[ids_x]

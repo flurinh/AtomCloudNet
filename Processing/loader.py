@@ -30,6 +30,16 @@ def angle_triangle(p1, p2, p3):
 
 
 class qm9_loader(Dataset):
+    """
+    Class to handle our data. We process .xyz files containing both the atom positions of a molecule as well as its type
+    (Z). Setting init to False leads to not processing (and calculating features), but instead loading from a preprocessed
+    version of our data (to be placed in the pkl folder).
+    Setting limit to 5000 by default loads our testset, 1000, 10000 and 100000 were limits (number of samples) corresponding
+    to training datasets.
+
+    Note that this dataloader can be used to load a variety of molecular properties, but for the DL project only
+    Urt (inner energy) was used.
+    """
     def __init__(self,
                  limit=10000,
                  shuffle=True,
@@ -146,23 +156,23 @@ class qm9_loader(Dataset):
         if not self.non_preprocessed:
             # prots = self.fix_padding(prots, Z)
             pass
-            two = self.data[str(idx)]['two'].reshape(30, 1)
-            three = self.data[str(idx)]['three'].reshape(30, 1)
-            if self.scaled:
-                two /= self.max_two
-                three /= self.max_three
-            stack = np.concatenate([Z, two, three], axis=1)
-            if not self.test_setting:
-                return torch.Tensor(self.data[str(idx)]['xyz']), \
-                       torch.LongTensor(prots), \
-                       torch.Tensor(stack), \
-                       torch.Tensor([self.data[str(idx)]['Urt']])
-            else:
-                return torch.Tensor(self.data[str(idx)]['xyz']), \
-                       torch.LongTensor(prots), \
-                       torch.Tensor(stack), \
-                       torch.Tensor([self.data[str(idx)]['Urt']]), \
-                       name
+        two = self.data[str(idx)]['two'].reshape(30, 1)
+        three = self.data[str(idx)]['three'].reshape(30, 1)
+        if self.scaled:
+            two /= self.max_two
+            three /= self.max_three
+        stack = np.concatenate([Z, two, three], axis=1)
+        if not self.test_setting:
+            return torch.Tensor(self.data[str(idx)]['xyz']), \
+                   torch.LongTensor(prots), \
+                   torch.Tensor(stack), \
+                   torch.Tensor([self.data[str(idx)]['Urt']])
+        else:
+            return torch.Tensor(self.data[str(idx)]['xyz']), \
+                   torch.LongTensor(prots), \
+                   torch.Tensor(stack), \
+                   torch.Tensor([self.data[str(idx)]['Urt']]), \
+                   name
 
     def __save_data__(self):
         if not os.path.isdir('data/pkl'):
@@ -182,6 +192,13 @@ class qm9_loader(Dataset):
         return self.data[str(idx)]['file']
 
     def two_body(self, xyz, Z, norm=False):
+        """
+        This function from xyz and charges Z calculates two body interactions
+        :param xyz:
+        :param Z:
+        :param norm: currently we do not use normalization
+        :return: two body interaction
+        """
         dists = squareform(pdist(xyz, 'euclidean', p=2, w=None, V=None, VI=None))
         dists = dists ** 6
         zz = np.outer(Z, Z)
@@ -200,6 +217,12 @@ class qm9_loader(Dataset):
         return final.sum(1)
 
     def three_body(self, xyz, Z):
+        """
+        This function from xyz and charges Z calculates three body interactions
+        :param xyz:
+        :param Z:
+        :return: three body interactions
+        """
         ids = [x for x in range(xyz.shape[0])]
         res = list(itertools.product(*[ids, ids, ids]))
         dists = squareform(pdist(xyz, 'euclidean', p=2, w=None, V=None, VI=None))
@@ -239,12 +262,20 @@ class qm9_loader(Dataset):
         return z_score * angle_score / r_score
 
     def get_max_23(self):
+        """
+        Normalizing two and three body interactions
+        :return:
+        """
         self.max_two = 39.39892996416823
         self.max_three = 93.227861810588
         print("max 2:", self.max_two)
         print("max 3:", self.max_three)
 
     def clean_outliers(self):
+        """
+        We used strict cutoff values of 200 and 600 Hartrees (leading to 75/100000 samples to be discared).
+        :return: cleaned data without extreme outliers
+        """
         new_data = {i: _dict for i, [_, _dict] in enumerate(self.data.items()) if (0 <= _dict['Urt'] <= 1)}
         del self.data
         self.data = new_data
