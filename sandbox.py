@@ -37,6 +37,8 @@ class ACN:
             os.mkdir('runs')
         if not os.path.isdir('models'):
             os.mkdir('models')
+        if not os.path.isdir('runs/run_{}'.format(int(self.run_id) // 100)):
+            os.mkdir('runs/run_{}'.format(int(self.run_id) // 100))
         if not os.path.isdir(self.val_path):
             os.mkdir(self.val_path)
         if not os.path.isdir(self.train_path):
@@ -45,11 +47,11 @@ class ACN:
             os.mkdir(self.checkpoint_folder)
 
     def load_model_specs(self):
+        self.hyperparams = get_config2(run_id=self.run_id, path=self.path)
+        print("MODEL SPEC", self.hyperparams)
         self.train_path_ = TRAIN_PATH
         self.test_path_ = TEST_PATH
-        self.hyperparams = get_config2(run_id=self.run_id, path=self.path)
         self.type = self.hyperparams[0]
-        print("MODEL SPEC", self.hyperparams)
         self.val_size = .1
         self.val_writer = SummaryWriter(self.val_path)
         self.train_writer = SummaryWriter(self.train_path)
@@ -68,8 +70,7 @@ class ACN:
             self.use_23_body = True
 
     def eval_molecular_model(self):
-        test_data = qm9_loader(limit=5000, path=self.test_path_ + '/*.xyz', type=self.type, init=False)
-        self.limit = test_data.limit
+        test_data = qm9_loader(limit=5000, path=self.test_path_ + '/*.xyz', type=self.type, init=False, test=True)
         test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
         # Load model
@@ -82,7 +83,8 @@ class ACN:
                            cloudord=self.hyperparams[11], nradial=self.hyperparams[12], nbasis=self.hyperparams[13],
                            two_three=self.use_23_body, Z=self.use_Z_emb).to(self.device)
             state_dict = torch.load(self.save_path + '.pkl', map_location=torch.device(self.device))
-            if 14000 < self.run_id < 14004:
+
+            if self.run_id == 14003 or self.run_id == 14006:
                 new_state_dict = OrderedDict()
                 for k, v in state_dict.items():
                     name = k[7:]  # remove module.
@@ -96,8 +98,12 @@ class ACN:
             tot_loss = 0
             mae_losses = []
             rmse_losses = []
+            predictions = []
+            targets = []
+            target_names = []
+
             test_pbar = tqdm(test_loader)
-            for i, (xyz, prot_ids, features, urt) in enumerate(test_pbar, start=1):
+            for i, (xyz, prot_ids, features, urt, names) in enumerate(test_pbar, start=1):
                 xyz = xyz.to(self.device)
                 featZ = prot_ids.view(xyz.shape[0], xyz.shape[1]).to(self.device)
                 feat23 = features.to(self.device)
@@ -111,6 +117,9 @@ class ACN:
                 rmse_losses.append(loss_)
                 tot_loss += mae_loss
                 avg_loss = tot_loss / i
+                predictions.append(prediction.cpu().detach().numpy())
+                targets.append(urt.cpu().detach().numpy())
+                target_names.append(list(names))
                 ex_pred = prediction[0].cpu().detach().numpy().round(3)
                 ex_target = urt[0].cpu().detach().numpy().round(3)
                 test_pbar.set_description("test-avg-loss::{}  "
@@ -122,16 +131,18 @@ class ACN:
                                                   ex_target))
             results = {'rmse_losses': rmse_losses,
                        'mae_losses': mae_losses,
-                       'avg_mae': avg_loss}
+                       'avg_mae': avg_loss,
+                       'predictions': predictions,
+                       'targets': targets,
+                       'names': target_names}
             f = open(self.save_path + '_eval.txt', "wb")
             pickle.dump(results, f)
             f.close()
 
     def train_molecular_model(self):
-        train_data = qm9_loader(limit=100000, path=self.train_path_ + '/*.xyz', type=self.type, init=False)
+        train_data = qm9_loader(limit=1000, path=self.train_path_ + '/*.xyz', type=self.type, init=False)
         self.limit = train_data.limit
         print("\nTotal number of training samples assembled:", train_data.__len__())
-
         num_train = len(train_data)
         indices = list(range(num_train))
         split = int(np.floor(self.val_size * num_train))
@@ -154,7 +165,6 @@ class ACN:
                            nffl=self.hyperparams[8], ffl1size=self.hyperparams[9], emb_dim=self.hyperparams[10],
                            cloudord=self.hyperparams[11], nradial=self.hyperparams[12], nbasis=self.hyperparams[13],
                            two_three=self.use_23_body, Z=self.use_Z_emb)
-        print("applying weights")
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
             model = torch.nn.DataParallel(model)

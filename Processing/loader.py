@@ -18,6 +18,17 @@ from torch.utils.data import Dataset
 from torch.autograd import Variable
 
 
+def angle_triangle(p1, p2, p3):
+    x1, y1, z1 = p1
+    x2, y2, z2 = p2
+    x3, y3, z3 = p3
+    num = (x2 - x1) * (x3 - x1) + (y2 - y1) * (y3 - y1) + (z2 - z1) * (z3 - z1)
+    den = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) * \
+          math.sqrt((x3 - x1) ** 2 + (y3 - y1) ** 2 + (z3 - z1) ** 2)
+    assert den > 0, "Division by 0 error occured in points {}".format((p1, p2, p3))
+    return math.degrees(math.acos(num / den))
+
+
 class qm9_loader(Dataset):
     def __init__(self,
                  limit=10000,
@@ -25,8 +36,8 @@ class qm9_loader(Dataset):
                  path='data/QM9/*.xyz',
                  type = 1,
                  scaled = True,
-                 init = False):
-        self.non_preprocessed = init
+                 init = False,
+                 test = False):
         self.limit = limit
         self.data = {}
         self.type = type
@@ -34,7 +45,9 @@ class qm9_loader(Dataset):
         self.filename = 'data/pkl/data_'+str(self.limit)+'.pkl'
         self.scaled = scaled
         self.max_two = 1
-        self.max_three = 1  # used to scale values to [0, 1]
+        self.max_three = 1
+        self.non_preprocessed = init
+        self.test_setting = test
         if init:
             files = glob.glob(pathname=path)
             if shuffle:
@@ -45,7 +58,7 @@ class qm9_loader(Dataset):
             for file_id, file in enumerate(tqdm(files)):
                 if counter < self.limit:
                     data = qm9_xyz(file)
-                    if data.natoms == None:
+                    if data.natoms is None:
                         pass
                     else:
                         natoms = data.natoms
@@ -54,9 +67,11 @@ class qm9_loader(Dataset):
                         prots_ids = np.asarray(list(map(float, data.prots[1])))
                         partial = np.asarray(list(map(float, data.partial)))
 
-                        # the padding points are out of reach for the neighborhoods of the molecule!
+                        # How we pad:
+                        #
+                        # Padding points are "out of reach" (outside the radius of all real atoms) for the neighborhoods
+                        # of the molecule!
                         xyz = np.full((natom_range[1], 3), 20, dtype=float)
-                        # xyz = np.random.rand(natom_range[1], 3)
                         Z = np.zeros((natom_range[1], 1))
                         padded_partial = np.zeros((natom_range[1], 1))
                         padded_prot_ids = np.zeros((natom_range[1], 1))
@@ -121,18 +136,33 @@ class qm9_loader(Dataset):
             self.get_max_23()
         self.clean_outliers()
 
-    def clean_outliers(self):
-        new_data = {i: _dict for i, [_, _dict] in enumerate(self.data.items()) if (0 <= _dict['Urt'] <= 1)}
-        del self.data
-        self.data = new_data
-        self.limit = len(self.data)
-        print("New data limit after removing outliers:", self.limit)
-        new_dict = {}
-        keys = [key for key in self.data.keys()]
-        for l in range(self.limit):
-            new_dict.update({str(l): self.data[keys[l]]})
-        del self.data
-        self.data = new_dict
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        prots = self.data[str(idx)]['prots_ids']
+        Z = self.data[str(idx)]['Z']
+        name = self.__getfilename__(idx)
+        if not self.non_preprocessed:
+            # prots = self.fix_padding(prots, Z)
+            pass
+            two = self.data[str(idx)]['two'].reshape(30, 1)
+            three = self.data[str(idx)]['three'].reshape(30, 1)
+            if self.scaled:
+                two /= self.max_two
+                three /= self.max_three
+            stack = np.concatenate([Z, two, three], axis=1)
+            if not self.test_setting:
+                return torch.Tensor(self.data[str(idx)]['xyz']), \
+                       torch.LongTensor(prots), \
+                       torch.Tensor(stack), \
+                       torch.Tensor([self.data[str(idx)]['Urt']])
+            else:
+                return torch.Tensor(self.data[str(idx)]['xyz']), \
+                       torch.LongTensor(prots), \
+                       torch.Tensor(stack), \
+                       torch.Tensor([self.data[str(idx)]['Urt']]), \
+                       name
 
     def __save_data__(self):
         if not os.path.isdir('data/pkl'):
@@ -147,31 +177,6 @@ class qm9_loader(Dataset):
         except IOError as e:
             print('File ' + self.filename + ' not found.')
             print(e.errno)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        prots = self.data[str(idx)]['prots_ids']
-        Z = self.data[str(idx)]['Z']
-        if not self.non_preprocessed:
-            prots = self.fix_padding(prots, Z)
-        if self.type > 1:
-            two = self.data[str(idx)]['two'].reshape(30, 1)
-            three = self.data[str(idx)]['three'].reshape(30, 1)
-            if self.scaled:
-                two /= self.max_two
-                three /= self.max_three
-            stack = np.concatenate([Z, two, three], axis=1)
-            return torch.Tensor(self.data[str(idx)]['xyz']), \
-                   torch.LongTensor(prots), \
-                   torch.Tensor(stack), \
-                   torch.Tensor([self.data[str(idx)]['Urt']])
-        else:
-            return torch.Tensor(self.data[str(idx)]['xyz']), \
-                   torch.LongTensor(prots), \
-                   [], \
-                   torch.Tensor([self.data[str(idx)]['Urt']])
 
     def __getfilename__(self, idx):
         return self.data[str(idx)]['file']
@@ -230,24 +235,27 @@ class qm9_loader(Dataset):
         z_score = z1 * z2 * z3
         angle_score = 1 + math.cos(a) * math.cos(b) * math.cos(c)
         r_score = (r12 * r23 * r13) ** p
-        assert r_score > 0, print(r12, r23, r13)
+        assert r_score > 0, "distance 0 leads to division by zero error! {}".format((r12, r23, r13))
         return z_score * angle_score / r_score
-
-    def angle_triangle(self, p1, p2, p3):
-        x1, y1, z1 = p1
-        x2, y2, z2 = p2
-        x3, y3, z3 = p3
-        num = (x2 - x1) * (x3 - x1) + (y2 - y1) * (y3 - y1) + (z2 - z1) * (z3 - z1)
-        den = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) * \
-              math.sqrt((x3 - x1) ** 2 + (y3 - y1) ** 2 + (z3 - z1) ** 2)
-        assert den > 0, print("Nenner 0 error: ", p1, p2, p3)
-        return math.degrees(math.acos(num / den))
 
     def get_max_23(self):
         self.max_two = 39.39892996416823
         self.max_three = 93.227861810588
         print("max 2:", self.max_two)
         print("max 3:", self.max_three)
+
+    def clean_outliers(self):
+        new_data = {i: _dict for i, [_, _dict] in enumerate(self.data.items()) if (0 <= _dict['Urt'] <= 1)}
+        del self.data
+        self.data = new_data
+        self.limit = len(self.data)
+        print("Number of samples after removing outliers:", self.limit)
+        new_dict = {}
+        keys = [key for key in self.data.keys()]
+        for l in range(self.limit):
+            new_dict.update({str(l): self.data[keys[l]]})
+        del self.data
+        self.data = new_dict
 
     def fix_padding(self, prot_ids, Z):
         """
@@ -257,3 +265,4 @@ class qm9_loader(Dataset):
         prot_ids += 1
         prot_ids[np.where(Z == 0)] = 0
         return prot_ids
+

@@ -16,16 +16,22 @@ if __name__ == '__main__':
     num_runs = len(files) - 1
     print("Running a total of {} jobs!".format(num_runs))
 
+    if args.setting == 0:
+        for i in range(24):
+            ini_id = i + 1
+            print("Running configuration N°" + str(ini_id).zfill(5))
+            os.system('bsub -W 24:00 -R "rusage[mem=16382]" python nnCM.py --run ' + str(ini_id))
+
     if args.setting == 1:
         for i, f in enumerate(files):
-            ini_id = 14001 + i
-            if ini_id > 14000:
+            ini_id = 15001 + i
+            if ini_id > 15000:
                 print("Running configuration N°" + str(ini_id).zfill(5))
-                os.system('bsub -W 24:00 -R "rusage[mem=10000, ngpus_excl_p=1]" python sandbox.py --run ' + str(ini_id))
+                os.system('bsub -W 12:00 -R "rusage[mem=10000, ngpus_excl_p=1]" python sandbox.py --run ' + str(ini_id))
                 time.sleep(1)
                 # ssh -NfL localhost:17779:localhost:7779 hidberf@login.leonhard.ethz.ch
                 # module load eth_proxy gcc/6.3.0 python_gpu/3.7.4
-                # scp -r hidberf@login.leonhard.ethz.ch:/cluster/home/hidberf/Protos/runs/run_140 "C:/Users/Flurin Hidber/PycharmProjects/Protos/runs"
+                # scp -r hidberf@login.leonhard.ethz.ch:/cluster/home/hidberf/Protos/runs/run_140 /Users/modlab/PycharmProjects/Protos/runs
                 # scp -r "C:/Users/Flurin Hidber/PycharmProjects/Protos/data/pkl/data_100000.pkl" hidberf@login.leonhard.ethz.ch:/cluster/home/hidberf/Protos/data/pkl
                 # bsub -n 1 -Is -W 1:00 -R "rusage[mem=20000, ngpus_excl_p=2]" python sandbox.py --run 14001
                 # os.system('bsub -W 24:00 python sandbox.py --run ' + str(ini_id))
@@ -35,9 +41,3 @@ if __name__ == '__main__':
                 # https://scicomp.ethz.ch/wiki/Using_the_batch_system
                 # conda env export | grep -v "^prefix: " > environment.yml
                 # conda env create -f environment.yml
-
-    if args.setting == 0:
-        for i in range(24):
-            ini_id = i + 1
-            print("Running configuration N°" + str(ini_id).zfill(5))
-            os.system('bsub -W 24:00 -R "rusage[mem=16382]" python nnCM.py --run ' + str(ini_id))
