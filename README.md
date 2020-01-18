@@ -56,23 +56,21 @@ This installs most dependencies, but to run our code you will need the dependenc
 Unzip the .zip data and .zip model folders.
 Paths should be:
 
-* data / pkl / data_10000.pkl
-* model / run_140 / model_14001.pkl
-
-To train a model run:
-
+```
+data / QM9Train / dsgdb9nsd_000049.xyz ...
+data / QM9Test / dsgdb9nsd_000074.xyz ...
+data / pkl / data_10000.pkl ...
+model / run_140 / model_14001.pkl ...
+```
+To train a model according to its configuration file (e.g. '/config_ACN/config_13003.ini') run:
 ```
 python sandbox.py --run 13003
 ```
-
 To load a model and evaluate it on the testset:
-
 ```
 python sandbox.py --run 13003 --mode 1
 ```
-
-The results can be plotted by running:
-
+The results can be visualized by running:
 ```
 python results.py
 ```

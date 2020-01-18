@@ -47,7 +47,11 @@ class ACN:
             os.mkdir(self.checkpoint_folder)
 
     def load_model_specs(self):
-        self.hyperparams = get_config2(run_id=self.run_id, path=self.path)
+        """
+        Previous iterations of AtomCloudNet did not necessarily use 2- & 3-body interactions (type 1). This code only
+        runs models of type 3. This section is only a helper to initialize.
+        """
+        self.hyperparams = get_config(run_id=self.run_id, path=self.path)
         print("MODEL SPEC", self.hyperparams)
         self.train_path_ = TRAIN_PATH
         self.test_path_ = TEST_PATH
@@ -147,7 +151,7 @@ class ACN:
 
     def train_molecular_model(self):
         """
-        Training settings
+        Training settings according to the provided configuration file.
         :return:
         """
         train_data = qm9_loader(limit=1000, path=self.train_path_ + '/*.xyz', type=self.type, init=False)
@@ -277,7 +281,9 @@ class ACN:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Specify setting.')
     parser.add_argument('--run', type=int, default=14003)
-    parser.add_argument('--mode', type=int, default=0)
+    parser.add_argument('--mode', type=int, default=0, description='Modes are 0: Train a model'
+                                                                   '          1: Evaluate a model'
+                                                                   '          2: Train and evaluate a model')
     args = parser.parse_args()
     net = ACN(run_id=args.run)
     net.load_model_specs()
@@ -288,4 +294,3 @@ if __name__ == '__main__':
     elif args.mode == 2:
         net.train_molecular_model()
         net.eval_molecular_model()
-

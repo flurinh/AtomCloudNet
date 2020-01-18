@@ -1,11 +1,3 @@
-data
-data.zip
-.idea
-__pycache__
-cache
-runs
-models
-se3cnn-point
-tensorboard.py
+.gitignore
 make_config.py
 run_all.py
