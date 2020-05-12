@@ -4,7 +4,7 @@ Herein, we introduce AtomCloudNet (ACN), a deep learning model to predict molecu
 information of individual atomic environments extracted by point cloud convolution. We exemplify the capability of our
 model by learning ground state atomization energies Urt of molecules calculated by first principal methods. Information
 of atomic position Ri and nuclear charge Zi are mapped to a molecular property via applying spheric harmonic functions
-Y m (φ, Θ). This resulted in a MAE of 131 kcal/mol. Therfore, ACN represents a novel approach for the prediction molec- l
+Y m (φ, Θ). This resulted in a MAE of 1.31 kcal/mol. Therfore, ACN represents a novel approach for the prediction molec- l
 ular and atomic properties.
 
 The kernel has been described and implemented for pytorch [here](https://github.com/mariogeiger/se3cnn) and a useful tutorial
@@ -55,7 +55,7 @@ python results.py
 
 ## AtomCloudNet Paper
 
-Here is our paper about [AtomCloudNet](https://github.com/flurinh/AtomCloudNet/blob/master/paper/AtomCloudNet.pdf), some chemical insights and other literature.
+Here is our paper about [AtomCloudNet](https://github.com/flurinh/AtomCloudNet/blob/master/AtomCloudNet.pdf), some chemical insights and other literature.
 
 
 
